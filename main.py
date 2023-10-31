@@ -1,16 +1,26 @@
-# This is a sample Python script.
+from datetime import datetime, date
+from dateutil.relativedelta import relativedelta
 
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
+def bond_yield(rate: float, price: float, maturity: datetime, frequency=1, settlement: datetime=date.today(), redemption: float=100) -> float:
+    """
+    Similar to excel yield function: Could not find a matching version of package dateutil
+    """
 
+    delta = relativedelta(maturity, settlement)
+    years = delta.years + delta.months/12 + delta.days/365
+    ytw = (rate*redemption + (100 - price) / years*frequency) / ((100 + price) / 2)
+    return ytw
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
-
-
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
+    yield_to_worst = bond_yield(
+        rate=1.875/100,
+        price=62.254,
+        maturity=datetime(year=2041, month=2, day=15),
+        frequency=2
+    )
+    # assert yield_to_worst == 5.214
+    print(yield_to_worst)
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+
+
+
