@@ -11,11 +11,13 @@ git clone
 cd 
 ```
 
-2. Download spreadsheets of [fixed income products from Fidelity](https://fixedincome.fidelity.com/ftgw/fi/FILanding#tbindividual-bonds|treasury) that you want to purchase  and put these in a directory (default is `~/Downloads/Fidelity`):
+2. Download spreadsheets of [fixed income products from Fidelity](https://fixedincome.fidelity.com/ftgw/fi/FILanding#tbindividual-bonds|treasury) that you want to purchase:
 
 ![fidelity.png](fidelity.png)
 
-3. Modify first few lines of [main.py](main.py) to specify your target cashflow and input directory and then run: 
+3. Modify first few lines of [main.py](main.py) to specify your target cashflow and path to above downloaded files. 
+
+4. Run: 
 ```
 poetry run streamlit run main.py
 ```
