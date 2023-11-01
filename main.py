@@ -28,10 +28,33 @@ securities['redemption'] = 100
 securities['maturity_date'] = pd.to_datetime(securities['Maturity Date'], format='%m/%d/%Y')
 securities['qty_bought'] = 0
 securities = securities.dropna(subset=['rate'])
-securities = securities.sort_values(by=['maturity_date'], ascending=False)
+#securities = securities.sort_values(by=['maturity_date'], ascending=False)
 
-buy(securities.iloc[46], qty=10)
-print(plan)
+buy(securities.iloc[467], qty=10)
 
-st.write(plan)
-st.write(securities[['cusip', 'rate', 'price', 'maturity_date', 'qty_bought']])
+class STREAMLIT_FORMATS(object):
+    CURRENCY = '$%.0f'
+    PERCENT = '%.2f%%'
+    NUMBER = '%d'
+
+st.dataframe(
+    data=securities[['cusip', 'Coupon', 'price', 'Ask Yield to Worst', 'maturity_date', 'qty_bought']],
+    column_config={
+        'cusip': st.column_config.TextColumn(label='CUSIP'),
+        'Coupon': st.column_config.NumberColumn(format=STREAMLIT_FORMATS.PERCENT),
+        'maturity_date': st.column_config.DateColumn(label='Maturity', format='YYYY-MM-DD'),
+        'price': st.column_config.NumberColumn(label='Price', format=STREAMLIT_FORMATS.CURRENCY),
+        'Ask Yield to Worst': st.column_config.NumberColumn(label='Yield', format=STREAMLIT_FORMATS.PERCENT),
+        'qty_bought': st.column_config.NumberColumn(label='Buy', format=STREAMLIT_FORMATS.NUMBER),
+    }
+)
+
+st.dataframe(
+    data=plan,
+    column_config={col: st.column_config.NumberColumn(format=STREAMLIT_FORMATS.CURRENCY if 'cashflow' in col else STREAMLIT_FORMATS.NUMBER) for col in plan.columns}
+)
+
+### TODO
+# 1. Read from dir
+# 2. Print total amount needed to buy using st.metric
+####
