@@ -57,4 +57,5 @@ st.dataframe(
 ### TODO
 # 1. Read from dir
 # 2. Print total amount needed to buy using st.metric
+# 3. Unit tests
 ####
