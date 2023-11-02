@@ -48,7 +48,7 @@ plan = plan.set_index('year')
 
 securities = pd.concat([pd.read_csv(file) for file in FIDELITY_FIXED_INCOME_SEARCH_RESULTS])
 securities['cusip'] = securities['Cusip'].str.replace('="', '').str.replace('"', '')
-securities.set_index('cusip') # TODO set index here
+securities = securities.set_index('cusip')
 securities['rate'] = securities['Coupon'] / 100
 securities['price'] = securities['Price Ask']
 securities['redemption'] = 100
@@ -65,7 +65,7 @@ def buy(end_date: date):
     investable = securities[(securities['maturity_date'] <= t) & (securities['maturity_date'] >= t - relativedelta(months=PAYOUT_MONTHS))]
     print(f'Searching for {end_date}')
     security = investable[investable['yield'] == investable['yield'].max()].sort_values(by=['maturity_date']).iloc[0]
-    cusip = security['cusip']
+    cusip = security.name
     print(f"Found CUSIP = {cusip} for {end_date} with maturity={security['maturity_date']}")
     plan[f'cashflow_{cusip}'] = 0
     for date in reversed(list(rrule.rrule(rrule.MONTHLY, dtstart=security['maturity_date'].replace(day=1), until=end_date))):
@@ -76,12 +76,12 @@ def buy(end_date: date):
         plan.loc[date.year, f'cashflow_{cusip}'] += cash_for_this_month
         print(f"\tCash needed for {date} = {cash_for_this_month}")
 
-    plan['cashflow'] += plan[f'cashflow_{security.cusip}']
-    securities.loc[securities['cusip'] == cusip, 'buy'] = plan[f'cashflow_{cusip}'].sum() // security['redemption']
+    plan['cashflow'] += plan[f'cashflow_{cusip}']
+    securities.loc[cusip, 'buy'] = plan[f'cashflow_{cusip}'].sum() // security['redemption']
     buy(security['maturity_date'] - relativedelta(days=1))
 
 
-class STREAMLIT_FORMATS(object):
+class STREAMLIT_FORMATS(object): # TODO use Styler
     CURRENCY = '$ %d'
     PERCENT = '%.2f%%'
     NUMBER = '%d'
@@ -98,11 +98,11 @@ if __name__ == "__main__":
     )
 
     st.dataframe(
-        data=securities[['cusip', 'Coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount']]
+        data=securities[['Coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount']]
         .assign(bought=securities['buy'] > 0)
         .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False),
         column_config={
-            'cusip': st.column_config.TextColumn(label='CUSIP'),
+            '_index': st.column_config.TextColumn(label='CUSIP'),
             'Coupon': st.column_config.NumberColumn(format=STREAMLIT_FORMATS.PERCENT),
             'maturity_date': st.column_config.DateColumn(label='Maturity', format='YYYY-MM-DD'),
             'price': st.column_config.NumberColumn(label='Price', format=STREAMLIT_FORMATS.CURRENCY),
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     st.dataframe(
         data=plan,
         column_config={col: st.column_config.NumberColumn(format=STREAMLIT_FORMATS.CURRENCY if 'cashflow' in col else STREAMLIT_FORMATS.NUMBER) for col in
-                       plan.columns}
+                       (plan.columns + ['_index'])} #TODO: format year
     )
 
 ### TODO
