@@ -1,7 +1,6 @@
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from dateutil import rrule
-import logging
 
 import pandas as pd
 import streamlit as st
@@ -10,7 +9,8 @@ import streamlit as st
 
 TARGET_MONTHLY_CASHFLOW_BY_YEAR = [(year, 48000 - (2039 - year) * 1000 if year < 2040 else 51000 - (2048 - year) * 1000) for year in range(2025, 2049)]
 FIDELITY_FIXED_INCOME_SEARCH_RESULTS = ['~/Downloads/Fidelity_FixedIncome_SearchResults.csv']
-PAYOUT_MONTHS = 12 # at most 1 lump sum payment in this many months
+PAYOUT_MONTHS = 12 # TDOD: remove
+CASH_OUT_APR = 1.0/100 # APR if we simply hold cash
 
 ###########################################
 
@@ -41,9 +41,16 @@ def buy(end_date: date):
     cusip = security['cusip']
     print(f'Found CUSIP = {cusip} for {end_date}')
     cash_needed = 0
-    for dt in rrule.rrule(rrule.MONTHLY, dtstart=security['maturity_date'], until=end_date):
+    for dt in rrule.rrule(rrule.MONTHLY, dtstart=security['maturity_date'].replace(day=1), until=end_date):
         plan_for_year = plan.loc[plan['year'] == dt.year]
-        cash_needed += 0 if plan_for_year.empty else plan_for_year.iloc[0]['target_monthly_cashflow']
+        if plan_for_year.empty:
+            continue
+        plan_for_year = plan_for_year.iloc[0]
+        x = (plan_for_year['target_cashflow'] - plan_for_year['cashflow'])/12
+        cash_needed += x
+        print(f'\tCash needed for {dt} = {x}')
+    print(f'\tTotal cash needed for {end_date} = {cash_needed}')
+
     qty = max(0, cash_needed//security['redemption'])
     year = security['maturity_date'].year
     plan[f'cashflow_{cusip}'] = plan.apply(lambda row: 0 if row['year'] > year else ((row['year'] == year) + security['rate']) * security['redemption'] * qty, axis=1)
@@ -57,7 +64,7 @@ class STREAMLIT_FORMATS(object):
     NUMBER = '%d'
 
 if __name__ == "__main__":
-    buy(date(2048, 12, 31))
+    buy(date(2048, 12, 31)) # todo max year
     securities['amount'] = securities['price'] * securities['buy']
 
     st.dataframe(
@@ -84,4 +91,5 @@ if __name__ == "__main__":
 # 1. Print total amount needed to buy using st.metric
 # 2. Unit tests
 # 3. add function types
+# 4. logging
 ####
