@@ -2,6 +2,7 @@ from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from dateutil import rrule
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -48,7 +49,6 @@ plan = plan.set_index('year')
 
 securities = pd.concat([pd.read_csv(file) for file in FIDELITY_FIXED_INCOME_SEARCH_RESULTS])
 securities['cusip'] = securities['Cusip'].str.replace('="', '').str.replace('"', '')
-securities['description'] = securities['Description'] # todo replace multple spaces
 securities = securities.set_index('cusip')
 securities['rate'] = securities['Coupon'] / 100
 securities['price'] = securities['Price Ask']
@@ -59,6 +59,7 @@ securities['buy'] = 0
 securities = securities.dropna(subset=['rate'])
 securities = securities[securities['Attributes'].str.contains('CP')]  # Non-callable bonds only
 
+
 def buy(end_date: date):
     if end_date.year < plan.index.min():
         return
@@ -68,7 +69,8 @@ def buy(end_date: date):
         return 0 if months_in_between <= 0 else row['yield'] / 100 - months_in_between * CASH_OUT_APR / 12
 
     securities['cash_adjusted_yield'] = securities.apply(cash_adjusted_yield, axis=1)
-    security = securities[securities['cash_adjusted_yield'] == securities['cash_adjusted_yield'].max()].sort_values(by=['maturity_date'], ascending=False).iloc[0]
+    security = securities[securities['cash_adjusted_yield'] == securities['cash_adjusted_yield'].max()] \
+        .sort_values(by=['maturity_date'], ascending=False).iloc[0]
     cusip = security.name
 
     print(f"Found CUSIP = {cusip} for {end_date} with maturity={security['maturity_date']}")
@@ -86,10 +88,22 @@ def buy(end_date: date):
     buy(security['maturity_date'] - relativedelta(days=1))
 
 
-class STREAMLIT_FORMATS(object):  # TODO use Styler
-    CURRENCY = '$ %.0f'
-    PERCENT = '%.2f%%'
-    NUMBER = '%d'
+class Styles:
+    @staticmethod
+    def money(decimals=0):
+        return f'$ {{:,.{decimals}f}}'
+
+    @staticmethod
+    def percent(decimals=2):
+        return f'{{:,.{decimals}f}}%'
+
+    @staticmethod
+    def date():
+        return lambda t: t.strftime("%Y-%m-%d")
+
+    @staticmethod
+    def string():
+        return lambda d: ' '.join(d.split())
 
 
 if __name__ == "__main__":
@@ -99,27 +113,31 @@ if __name__ == "__main__":
 
     st.metric(
         label='Total Investment',
-        value='$ ' + str(int(securities['amount'].sum()))
+        value=Styles.money().format(int(securities['amount'].sum()))
     )
 
     st.dataframe(
-        data=securities[['Coupon', 'description', 'price', 'yield', 'maturity_date', 'buy', 'amount']]
+        data=securities[['price', 'yield', 'maturity_date', 'buy', 'amount', 'Description', ]]
         .assign(bought=securities['buy'] > 0)
-        .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False),
-        column_config={
-            '_index': st.column_config.TextColumn(label='CUSIP'),
-            'Coupon': st.column_config.NumberColumn(format=STREAMLIT_FORMATS.PERCENT),
-            'maturity_date': st.column_config.DateColumn(label='Maturity', format='YYYY-MM-DD'),
-            'price': st.column_config.NumberColumn(label='Price', format=STREAMLIT_FORMATS.CURRENCY),
-            'yield': st.column_config.NumberColumn(label='Yield', format=STREAMLIT_FORMATS.PERCENT),
-            'buy': st.column_config.NumberColumn(label='Buy', format=STREAMLIT_FORMATS.NUMBER),
-            'amount': st.column_config.NumberColumn(label='Amount', format=STREAMLIT_FORMATS.CURRENCY),
-        }
+        .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False)
+        .style.format({
+            'price': Styles.money(2),
+            'Coupon': Styles.percent(),
+            'yield': Styles.percent(),
+            'maturity_date': Styles.date(),
+            'amount': Styles.money(),
+            'Description': Styles.string()
+        })
     )
 
-    plan_column_config = {col: st.column_config.NumberColumn(format=STREAMLIT_FORMATS.CURRENCY if 'cashflow' in col else STREAMLIT_FORMATS.NUMBER) for col in plan.columns}
-    plan_column_config['_index'] = st.column_config.NumberColumn(label='YEAR', format=STREAMLIT_FORMATS.NUMBER)
-    st.dataframe(data=plan, column_config=plan_column_config)
+    st.dataframe(
+        data=plan
+        .replace(0, np.nan)
+        .style.format({col: Styles.money() for col in plan.columns}),
+        column_config={
+            '_index': st.column_config.NumberColumn(label='Year', format='%d')
+        }
+    )
 
 ### TODO
 # 1. Unit tests
