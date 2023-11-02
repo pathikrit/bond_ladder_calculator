@@ -44,8 +44,8 @@ CASH_OUT_APR = 1.0 / 100  # APR if we simply hold cash
 plan = pd.DataFrame(data=list(TARGET_MONTHLY_CASHFLOW_BY_YEAR.items()), columns=['year', 'target_monthly_cashflow'])
 plan['target_cashflow'] = plan['target_monthly_cashflow'] * 12
 plan['cashflow'] = 0
-plan.set_index('year')
-FIRST_DATE = datetime(year=plan['year'].min(), month=1, day=1)
+plan = plan.set_index('year')
+FIRST_DATE = datetime(year=plan.index.min(), month=1, day=1)
 
 securities = pd.concat([pd.read_csv(file) for file in FIDELITY_FIXED_INCOME_SEARCH_RESULTS])
 securities['cusip'] = securities['Cusip'].str.replace('="', '').str.replace('"', '')
@@ -69,22 +69,19 @@ def buy(end_date: date):
     cusip = security['cusip']
     print(f"Found CUSIP = {cusip} for {end_date} with maturity={security['maturity_date']}")
     cash_needed = 0
+    plan[f'cashflow_{cusip}'] = 0
     for dt in reversed(list(rrule.rrule(rrule.MONTHLY, dtstart=security['maturity_date'].replace(day=1), until=end_date))):
-        plan_for_year = plan.loc[plan['year'] == dt.year]
-        if plan_for_year.empty:
+        if not dt.year in plan.index:
             continue
-        plan_for_year = plan_for_year.iloc[0]
-        x = max(0, plan_for_year['target_cashflow'] / dt.month)
-        plan.loc[plan['year'] == dt.year, 'target_cashflow'] -= x
+        x = plan.loc[dt.year, 'target_cashflow'] / dt.month
+        plan.loc[dt.year, 'target_cashflow'] -= x
+        plan.loc[dt.year, f'cashflow_{cusip}'] += x
         cash_needed += x
-        print(f"\tCash needed for {dt} = {x} (months = {dt.month}, tc={plan_for_year['target_cashflow']}, c={plan_for_year['cashflow']})")
+        print(f"\tCash needed for {dt} = {x}")
     print(f"\tTotal cash needed for {security['maturity_date'].date()} to {end_date} = {cash_needed}")
 
-    qty = max(0, cash_needed // security['redemption'])
-    year = security['maturity_date'].year
-    plan[f'cashflow_{cusip}'] = plan.apply(lambda row: 0 if row['year'] > year else ((row['year'] == year) + security['rate']) * security['redemption'] * qty, axis=1)
     plan['cashflow'] += plan[f'cashflow_{security.cusip}']
-    securities.loc[securities['cusip'] == cusip, 'buy'] = qty
+    securities.loc[securities['cusip'] == cusip, 'buy'] = cash_needed // security['redemption']
     buy(security['maturity_date'] - relativedelta(days=1))
 
 
@@ -95,7 +92,7 @@ class STREAMLIT_FORMATS(object):
 
 
 if __name__ == "__main__":
-    buy(date(plan['year'].max(), 12, 31))
+    buy(date(plan.index.max(), 12, 31))
     securities['amount'] = securities['price'] * securities['buy']
     plan['target_cashflow'] = plan['target_monthly_cashflow'] * 12
 
@@ -106,8 +103,8 @@ if __name__ == "__main__":
 
     st.dataframe(
         data=securities[['cusip', 'Coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount']]
-            .assign(bought=securities['buy'] > 0)
-            .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False),
+        .assign(bought=securities['buy'] > 0)
+        .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False),
         column_config={
             'cusip': st.column_config.TextColumn(label='CUSIP'),
             'Coupon': st.column_config.NumberColumn(format=STREAMLIT_FORMATS.PERCENT),
@@ -116,14 +113,13 @@ if __name__ == "__main__":
             'yield': st.column_config.NumberColumn(label='Yield', format=STREAMLIT_FORMATS.PERCENT),
             'buy': st.column_config.NumberColumn(label='Buy', format=STREAMLIT_FORMATS.NUMBER),
             'amount': st.column_config.NumberColumn(label='Amount', format=STREAMLIT_FORMATS.CURRENCY),
-        },
-        hide_index=True
+        }
     )
 
     st.dataframe(
         data=plan,
-        column_config={col: st.column_config.NumberColumn(format=STREAMLIT_FORMATS.CURRENCY if 'cashflow' in col else STREAMLIT_FORMATS.NUMBER) for col in plan.columns},
-        hide_index=True
+        column_config={col: st.column_config.NumberColumn(format=STREAMLIT_FORMATS.CURRENCY if 'cashflow' in col else STREAMLIT_FORMATS.NUMBER) for col in
+                       plan.columns}
     )
 
 ### TODO
