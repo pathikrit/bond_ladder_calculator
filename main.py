@@ -59,13 +59,18 @@ def buy(end_date: date):
     buy(security['maturity_date'] - relativedelta(days=1))
 
 class STREAMLIT_FORMATS(object):
-    CURRENCY = '$%.0f'
+    CURRENCY = '$%,.0f'
     PERCENT = '%.2f%%'
     NUMBER = '%d'
 
 if __name__ == "__main__":
     buy(date(2048, 12, 31)) # todo max year
     securities['amount'] = securities['price'] * securities['buy']
+
+    st.metric(
+        label='Total Investment',
+        value='$ ' + str(int(securities['amount'].sum()))
+    )
 
     st.dataframe(
         data=securities[['cusip', 'Coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount']].sort_values(by=['buy', 'yield', 'maturity_date'], ascending=False),
@@ -88,8 +93,7 @@ if __name__ == "__main__":
     )
 
 ### TODO
-# 1. Print total amount needed to buy using st.metric
-# 2. Unit tests
-# 3. add function types
-# 4. logging
+# 1. Unit tests
+# 2. add function types
+# 3. logging
 ####
