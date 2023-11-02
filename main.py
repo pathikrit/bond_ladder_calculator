@@ -67,17 +67,18 @@ def buy(end_date: date):
     print(f'Searching for {end_date}')
     security = investable[investable['yield'] == investable['yield'].max()].sort_values(by=['maturity_date']).iloc[0]
     cusip = security['cusip']
-    print(f'Found CUSIP = {cusip} for {end_date}')
+    print(f"Found CUSIP = {cusip} for {end_date} with maturity={security['maturity_date']}")
     cash_needed = 0
-    for dt in rrule.rrule(rrule.MONTHLY, dtstart=security['maturity_date'].replace(day=1), until=end_date):
+    for dt in reversed(list(rrule.rrule(rrule.MONTHLY, dtstart=security['maturity_date'].replace(day=1), until=end_date))):
         plan_for_year = plan.loc[plan['year'] == dt.year]
         if plan_for_year.empty:
             continue
         plan_for_year = plan_for_year.iloc[0]
-        x = (plan_for_year['target_cashflow'] - plan_for_year['cashflow']) / 12
+        x = max(0, plan_for_year['target_cashflow'] / dt.month)
+        plan.loc[plan['year'] == dt.year, 'target_cashflow'] -= x
         cash_needed += x
-        print(f'\tCash needed for {dt} = {x}')
-    print(f'\tTotal cash needed for {end_date} = {cash_needed}')
+        print(f"\tCash needed for {dt} = {x} (months = {dt.month}, tc={plan_for_year['target_cashflow']}, c={plan_for_year['cashflow']})")
+    print(f"\tTotal cash needed for {security['maturity_date'].date()} to {end_date} = {cash_needed}")
 
     qty = max(0, cash_needed // security['redemption'])
     year = security['maturity_date'].year
@@ -96,6 +97,7 @@ class STREAMLIT_FORMATS(object):
 if __name__ == "__main__":
     buy(date(plan['year'].max(), 12, 31))
     securities['amount'] = securities['price'] * securities['buy']
+    plan['target_cashflow'] = plan['target_monthly_cashflow'] * 12
 
     st.metric(
         label='Total Investment',
