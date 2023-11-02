@@ -9,7 +9,7 @@ import streamlit as st
 
 TARGET_MONTHLY_CASHFLOW_BY_YEAR = [(year, 48000 - (2039 - year) * 1000 if year < 2040 else 51000 - (2048 - year) * 1000) for year in range(2025, 2049)]
 FIDELITY_FIXED_INCOME_SEARCH_RESULTS = ['~/Downloads/Fidelity_FixedIncome_SearchResults.csv']
-PAYOUT_MONTHS = 12 # TDOD: remove
+PAYOUT_MONTHS = 12 # TODO: remove
 CASH_OUT_APR = 1.0/100 # APR if we simply hold cash
 
 ###########################################
@@ -59,12 +59,12 @@ def buy(end_date: date):
     buy(security['maturity_date'] - relativedelta(days=1))
 
 class STREAMLIT_FORMATS(object):
-    CURRENCY = '$%,.0f'
+    CURRENCY = '$%.0f'
     PERCENT = '%.2f%%'
     NUMBER = '%d'
 
 if __name__ == "__main__":
-    buy(date(2048, 12, 31)) # todo max year
+    buy(date(plan['year'].max(), 12, 31))
     securities['amount'] = securities['price'] * securities['buy']
 
     st.metric(
