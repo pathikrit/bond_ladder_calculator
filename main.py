@@ -33,7 +33,9 @@ TARGET_MONTHLY_CASHFLOW_BY_YEAR = {
     2047: 51000,
     2048: 52000
 }
-FIDELITY_FIXED_INCOME_SEARCH_RESULTS = ['~/Downloads/Fidelity_FixedIncome_SearchResults.csv']
+FIDELITY_FIXED_INCOME_SEARCH_RESULTS = [
+    '~/Downloads/Fidelity_FixedIncome_SearchResults.csv'
+]
 PAYOUT_MONTHS = 12  # TODO: remove
 CASH_OUT_APR = 1.0 / 100  # APR if we simply hold cash
 
@@ -102,7 +104,8 @@ if __name__ == "__main__":
 
     st.dataframe(
         data=securities[['cusip', 'Coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount']]
-            .sort_values(by=['buy', 'yield', 'maturity_date'], ascending=False),
+            .assign(bought=securities['buy'] > 0)
+            .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False),
         column_config={
             'cusip': st.column_config.TextColumn(label='CUSIP'),
             'Coupon': st.column_config.NumberColumn(format=STREAMLIT_FORMATS.PERCENT),
