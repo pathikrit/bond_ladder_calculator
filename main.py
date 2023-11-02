@@ -46,15 +46,16 @@ plan['cashflow'] = 0
 plan = plan.set_index('year')
 
 securities = pd.concat([pd.read_csv(file) for file in FIDELITY_FIXED_INCOME_SEARCH_RESULTS])
+securities = securities.dropna(subset=['rate'])
+securities = securities[securities['Attributes'].str.contains('CP')]  # Non-callable bonds only
 securities['cusip'] = securities['Cusip'].str.replace('="', '').str.replace('"', '')
 securities = securities.set_index('cusip')
 securities['rate'] = securities['Coupon'] / 100
 securities['price'] = securities['Price Ask']
 securities['redemption'] = 100
-securities['yield'] = securities['Ask Yield to Worst']
+securities['yield'] = securities['Ask Yield to Worst'] / 100
 securities['maturity_date'] = pd.to_datetime(securities['Maturity Date'], format='%m/%d/%Y')
 securities['buy'] = 0
-securities = securities.dropna(subset=['rate'])
 
 
 def buy(end_date: date):
@@ -62,10 +63,8 @@ def buy(end_date: date):
         return
 
     def cash_adjusted_yield(row):
-        d1 = datetime.combine(end_date, datetime.max.time())  # TODO: remove this - we should just use date columns for maturity_date
-        d2 = row['maturity_date']
-        delta = d1.month - d2.month + 12 * (d1.year - d2.year)
-        return 0 if delta <= 0 else row['yield']/100 - delta*CASH_OUT_APR/12
+        months_in_between = end_date.month - row['maturity_date'].month + 12 * (end_date.year - row['maturity_date'].year)
+        return 0 if months_in_between <= 0 else row['yield'] - months_in_between * CASH_OUT_APR / 12
 
     securities['cash_adjusted_yield'] = securities.apply(cash_adjusted_yield, axis=1)
     security = securities[securities['cash_adjusted_yield'] == securities['cash_adjusted_yield'].max()].sort_values(by=['maturity_date'], ascending=False).iloc[0]
@@ -74,7 +73,7 @@ def buy(end_date: date):
     print(f"Found CUSIP = {cusip} for {end_date} with maturity={security['maturity_date']}")
     plan[f'cashflow_{cusip}'] = 0
     for date in reversed(list(rrule.rrule(rrule.MONTHLY, dtstart=security['maturity_date'].replace(day=1), until=end_date))):
-        if not date.year in plan.index: # todo rm this
+        if not date.year in plan.index:
             continue
         cash_for_this_month = plan.loc[date.year, 'target_cashflow'] / date.month
         plan.loc[date.year, 'target_cashflow'] -= cash_for_this_month
@@ -86,7 +85,7 @@ def buy(end_date: date):
     buy(security['maturity_date'] - relativedelta(days=1))
 
 
-class STREAMLIT_FORMATS(object): # TODO use Styler
+class STREAMLIT_FORMATS(object):  # TODO use Styler
     CURRENCY = '$ %d'
     PERCENT = '%.2f%%'
     NUMBER = '%d'
@@ -120,7 +119,7 @@ if __name__ == "__main__":
     st.dataframe(
         data=plan,
         column_config={col: st.column_config.NumberColumn(format=STREAMLIT_FORMATS.CURRENCY if 'cashflow' in col else STREAMLIT_FORMATS.NUMBER) for col in
-                       (plan.columns + ['_index'])} #TODO: format year
+                       (plan.columns + ['_index'])}  # TODO: format year
     )
 
 ### TODO
