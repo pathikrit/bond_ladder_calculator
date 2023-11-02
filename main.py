@@ -34,7 +34,8 @@ TARGET_MONTHLY_CASHFLOW_BY_YEAR = {
     2048: 52000
 }
 FIDELITY_FIXED_INCOME_SEARCH_RESULTS = [
-    '~/Downloads/Fidelity_FixedIncome_SearchResults.csv'
+    # '~/Downloads/CDs.csv',
+    '~/Downloads/Treasury.csv'
 ]
 CASH_OUT_APR = 1.0 / 100  # APR if we simply hold cash
 
@@ -46,8 +47,8 @@ plan['cashflow'] = 0
 plan = plan.set_index('year')
 
 securities = pd.concat([pd.read_csv(file) for file in FIDELITY_FIXED_INCOME_SEARCH_RESULTS])
-# securities = securities[securities['Attributes'].str.contains('CP')]  # Non-callable bonds only
 securities['cusip'] = securities['Cusip'].str.replace('="', '').str.replace('"', '')
+securities['description'] = securities['Description'] # todo replace multple spaces
 securities = securities.set_index('cusip')
 securities['rate'] = securities['Coupon'] / 100
 securities['price'] = securities['Price Ask']
@@ -56,7 +57,7 @@ securities['yield'] = securities['Ask Yield to Worst']
 securities['maturity_date'] = pd.to_datetime(securities['Maturity Date'], format='%m/%d/%Y')
 securities['buy'] = 0
 securities = securities.dropna(subset=['rate'])
-
+securities = securities[securities['Attributes'].str.contains('CP')]  # Non-callable bonds only
 
 def buy(end_date: date):
     if end_date.year < plan.index.min():
@@ -71,7 +72,7 @@ def buy(end_date: date):
     cusip = security.name
 
     print(f"Found CUSIP = {cusip} for {end_date} with maturity={security['maturity_date']}")
-    plan[f'cashflow_{cusip}'] = 0
+    plan[f'cashflow_{cusip}'] = 0.0
     for date in reversed(list(rrule.rrule(rrule.MONTHLY, dtstart=security['maturity_date'].replace(day=1), until=end_date))):
         if not date.year in plan.index:
             continue
@@ -102,7 +103,7 @@ if __name__ == "__main__":
     )
 
     st.dataframe(
-        data=securities[['Coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount']]
+        data=securities[['Coupon', 'description', 'price', 'yield', 'maturity_date', 'buy', 'amount']]
         .assign(bought=securities['buy'] > 0)
         .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False),
         column_config={
