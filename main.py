@@ -46,16 +46,16 @@ plan['cashflow'] = 0
 plan = plan.set_index('year')
 
 securities = pd.concat([pd.read_csv(file) for file in FIDELITY_FIXED_INCOME_SEARCH_RESULTS])
-securities = securities.dropna(subset=['rate'])
-securities = securities[securities['Attributes'].str.contains('CP')]  # Non-callable bonds only
+# securities = securities[securities['Attributes'].str.contains('CP')]  # Non-callable bonds only
 securities['cusip'] = securities['Cusip'].str.replace('="', '').str.replace('"', '')
 securities = securities.set_index('cusip')
 securities['rate'] = securities['Coupon'] / 100
 securities['price'] = securities['Price Ask']
 securities['redemption'] = 100
-securities['yield'] = securities['Ask Yield to Worst'] / 100
+securities['yield'] = securities['Ask Yield to Worst']
 securities['maturity_date'] = pd.to_datetime(securities['Maturity Date'], format='%m/%d/%Y')
 securities['buy'] = 0
+securities = securities.dropna(subset=['rate'])
 
 
 def buy(end_date: date):
@@ -64,7 +64,7 @@ def buy(end_date: date):
 
     def cash_adjusted_yield(row):
         months_in_between = end_date.month - row['maturity_date'].month + 12 * (end_date.year - row['maturity_date'].year)
-        return 0 if months_in_between <= 0 else row['yield'] - months_in_between * CASH_OUT_APR / 12
+        return 0 if months_in_between <= 0 else row['yield'] / 100 - months_in_between * CASH_OUT_APR / 12
 
     securities['cash_adjusted_yield'] = securities.apply(cash_adjusted_yield, axis=1)
     security = securities[securities['cash_adjusted_yield'] == securities['cash_adjusted_yield'].max()].sort_values(by=['maturity_date'], ascending=False).iloc[0]
@@ -86,7 +86,7 @@ def buy(end_date: date):
 
 
 class STREAMLIT_FORMATS(object):  # TODO use Styler
-    CURRENCY = '$ %d'
+    CURRENCY = '$ %.0f'
     PERCENT = '%.2f%%'
     NUMBER = '%d'
 
@@ -116,11 +116,9 @@ if __name__ == "__main__":
         }
     )
 
-    st.dataframe(
-        data=plan,
-        column_config={col: st.column_config.NumberColumn(format=STREAMLIT_FORMATS.CURRENCY if 'cashflow' in col else STREAMLIT_FORMATS.NUMBER) for col in
-                       (plan.columns + ['_index'])}  # TODO: format year
-    )
+    plan_column_config = {col: st.column_config.NumberColumn(format=STREAMLIT_FORMATS.CURRENCY if 'cashflow' in col else STREAMLIT_FORMATS.NUMBER) for col in plan.columns}
+    plan_column_config['_index'] = st.column_config.NumberColumn(label='YEAR', format=STREAMLIT_FORMATS.NUMBER)
+    st.dataframe(data=plan, column_config=plan_column_config)
 
 ### TODO
 # 1. Unit tests
