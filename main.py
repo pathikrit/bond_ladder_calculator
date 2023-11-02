@@ -45,11 +45,10 @@ plan = pd.DataFrame(data=list(TARGET_MONTHLY_CASHFLOW_BY_YEAR.items()), columns=
 plan['target_cashflow'] = plan['target_monthly_cashflow'] * 12
 plan['cashflow'] = 0
 plan = plan.set_index('year')
-FIRST_DATE = datetime(year=plan.index.min(), month=1, day=1)
 
 securities = pd.concat([pd.read_csv(file) for file in FIDELITY_FIXED_INCOME_SEARCH_RESULTS])
 securities['cusip'] = securities['Cusip'].str.replace('="', '').str.replace('"', '')
-securities.set_index('cusip')
+securities.set_index('cusip') # TODO set index here
 securities['rate'] = securities['Coupon'] / 100
 securities['price'] = securities['Price Ask']
 securities['redemption'] = 100
@@ -60,33 +59,30 @@ securities = securities.dropna(subset=['rate'])
 
 
 def buy(end_date: date):
-    t = datetime.combine(end_date, datetime.max.time())  # TODO: remove this - we should just use date columns for maturity_date
-    if t < FIRST_DATE:
+    if end_date.year < plan.index.min():
         return
+    t = datetime.combine(end_date, datetime.max.time())  # TODO: remove this - we should just use date columns for maturity_date
     investable = securities[(securities['maturity_date'] <= t) & (securities['maturity_date'] >= t - relativedelta(months=PAYOUT_MONTHS))]
     print(f'Searching for {end_date}')
     security = investable[investable['yield'] == investable['yield'].max()].sort_values(by=['maturity_date']).iloc[0]
     cusip = security['cusip']
     print(f"Found CUSIP = {cusip} for {end_date} with maturity={security['maturity_date']}")
-    cash_needed = 0
     plan[f'cashflow_{cusip}'] = 0
-    for dt in reversed(list(rrule.rrule(rrule.MONTHLY, dtstart=security['maturity_date'].replace(day=1), until=end_date))):
-        if not dt.year in plan.index:
+    for date in reversed(list(rrule.rrule(rrule.MONTHLY, dtstart=security['maturity_date'].replace(day=1), until=end_date))):
+        if not date.year in plan.index: # todo rm this
             continue
-        x = plan.loc[dt.year, 'target_cashflow'] / dt.month
-        plan.loc[dt.year, 'target_cashflow'] -= x
-        plan.loc[dt.year, f'cashflow_{cusip}'] += x
-        cash_needed += x
-        print(f"\tCash needed for {dt} = {x}")
-    print(f"\tTotal cash needed for {security['maturity_date'].date()} to {end_date} = {cash_needed}")
+        cash_for_this_month = plan.loc[date.year, 'target_cashflow'] / date.month
+        plan.loc[date.year, 'target_cashflow'] -= cash_for_this_month
+        plan.loc[date.year, f'cashflow_{cusip}'] += cash_for_this_month
+        print(f"\tCash needed for {date} = {cash_for_this_month}")
 
     plan['cashflow'] += plan[f'cashflow_{security.cusip}']
-    securities.loc[securities['cusip'] == cusip, 'buy'] = cash_needed // security['redemption']
+    securities.loc[securities['cusip'] == cusip, 'buy'] = plan[f'cashflow_{cusip}'].sum() // security['redemption']
     buy(security['maturity_date'] - relativedelta(days=1))
 
 
 class STREAMLIT_FORMATS(object):
-    CURRENCY = '$%.0f'
+    CURRENCY = '$ %d'
     PERCENT = '%.2f%%'
     NUMBER = '%d'
 
