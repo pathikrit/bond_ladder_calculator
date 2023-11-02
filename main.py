@@ -5,7 +5,7 @@ from dateutil import rrule
 import pandas as pd
 import streamlit as st
 
-#### This is the input to this program ####
+######### INPUTS ###########
 
 TARGET_MONTHLY_CASHFLOW_BY_YEAR = {
     2025: 34000,
@@ -36,7 +36,6 @@ TARGET_MONTHLY_CASHFLOW_BY_YEAR = {
 FIDELITY_FIXED_INCOME_SEARCH_RESULTS = [
     '~/Downloads/Fidelity_FixedIncome_SearchResults.csv'
 ]
-PAYOUT_MONTHS = 12  # TODO: remove
 CASH_OUT_APR = 1.0 / 100  # APR if we simply hold cash
 
 ###########################################
@@ -61,11 +60,17 @@ securities = securities.dropna(subset=['rate'])
 def buy(end_date: date):
     if end_date.year < plan.index.min():
         return
-    t = datetime.combine(end_date, datetime.max.time())  # TODO: remove this - we should just use date columns for maturity_date
-    investable = securities[(securities['maturity_date'] <= t) & (securities['maturity_date'] >= t - relativedelta(months=PAYOUT_MONTHS))]
-    print(f'Searching for {end_date}')
-    security = investable[investable['yield'] == investable['yield'].max()].sort_values(by=['maturity_date']).iloc[0]
+
+    def cash_adjusted_yield(row):
+        d1 = datetime.combine(end_date, datetime.max.time())  # TODO: remove this - we should just use date columns for maturity_date
+        d2 = row['maturity_date']
+        delta = d1.month - d2.month + 12 * (d1.year - d2.year)
+        return 0 if delta <= 0 else row['yield']/100 - delta*CASH_OUT_APR/12
+
+    securities['cash_adjusted_yield'] = securities.apply(cash_adjusted_yield, axis=1)
+    security = securities[securities['cash_adjusted_yield'] == securities['cash_adjusted_yield'].max()].sort_values(by=['maturity_date'], ascending=False).iloc[0]
     cusip = security.name
+
     print(f"Found CUSIP = {cusip} for {end_date} with maturity={security['maturity_date']}")
     plan[f'cashflow_{cusip}'] = 0
     for date in reversed(list(rrule.rrule(rrule.MONTHLY, dtstart=security['maturity_date'].replace(day=1), until=end_date))):
