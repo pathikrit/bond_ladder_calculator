@@ -110,6 +110,10 @@ class Styles:
         return f'{{:,.{decimals}f}}%'
 
     @staticmethod
+    def num(decimals=0):
+        return f'{{:,.{decimals}f}}'
+
+    @staticmethod
     def date():
         return lambda t: t.strftime("%Y-%m-%d")
 
@@ -125,22 +129,23 @@ if __name__ == "__main__":
 
     st.metric(
         label='Total Investment',
-        value=Styles.money().format(int(securities['amount'].sum()))
+        value=Styles.money().format(securities['amount'].sum())
     )
 
     st.dataframe(
-        data=securities[['Coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount', 'Description', ]]
+        data=securities[['Coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount', 'Description']]
+        .rename(columns=str.lower)
         .assign(bought=securities['buy'] > 0)
         .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False)
         .replace(0, np.nan)
         .style.format({
-            'rate': Styles.percent(),
+            'coupon': Styles.percent(),
             'price': Styles.money(2),
-            'Coupon': Styles.percent(),
             'yield': Styles.percent(),
             'maturity_date': Styles.date(),
+            'buy': Styles.num(),
             'amount': Styles.money(),
-            'Description': Styles.string()
+            'description': Styles.string()
         })
     )
 
@@ -149,7 +154,7 @@ if __name__ == "__main__":
         .replace(0, np.nan)
         .style.format({col: Styles.money() for col in plan.columns}),
         column_config={
-            '_index': st.column_config.NumberColumn(label='Year', format='%d')
+            '_index': st.column_config.NumberColumn(format='%d')
         }
     )
 
