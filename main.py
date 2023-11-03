@@ -10,7 +10,6 @@ import streamlit as st
 
 
 class Calculator:
-
     def __init__(self, fidelity_files):
         securities = pd.concat([pd.read_csv(file) for file in fidelity_files])
         securities['cusip'] = securities['Cusip'].str.replace('="', '').str.replace('"', '')
@@ -43,7 +42,7 @@ class Calculator:
             if max_maturity_date < START_DATE:  # Done buying
                 securities['amount'] = securities['price'] * securities['buy']
                 plan['target_cashflow'] = plan['target_monthly_cashflow'] * 12
-                return
+                return plan, securities
 
             def cashout_adjusted_yield(row):
                 months_in_between = max_maturity_date.month - row['maturity_date'].month + 12 * (max_maturity_date.year - row['maturity_date'].year)
@@ -78,10 +77,52 @@ class Calculator:
                 plan['target_cashflow'] = plan['target_cashflow'].clip(lower=0)  # sometimes dividend payout may exceed our needs by a bit
 
             plan['cashflow'] += plan[f'cashflow_{cusip}']
-            buy(max_maturity_date=maturity_date - relativedelta(days=1))  # buy next security with max maturity date 1 day before this one matures
+            return buy(max_maturity_date=maturity_date - relativedelta(days=1))  # buy next security with max maturity date 1 day before this one matures
 
-        buy(max_maturity_date=END_DATE)
-        return plan, securities
+        return buy(max_maturity_date=END_DATE)
+
+    @staticmethod
+    def render(plan, securities):
+        total_investment = securities['amount'].sum()
+        total_cashflow = plan['cashflow'].sum()
+        irr = npf.irr([-total_investment] + plan['cashflow'].tolist())
+
+        col1, col2 = st.columns(2)
+        col1.metric(
+            label='Investment',
+            value=Styles.money().format(total_investment),
+            delta='IRR ' + Styles.percent().format(irr * 100)
+        )
+        col2.metric(
+            label='Total Payout',
+            value=Styles.money().format(total_cashflow),
+            delta='MOIC ' + Styles.num(decimals=2).format(total_cashflow / total_investment) + 'x'
+        )
+
+        st.dataframe(
+            data=plan
+            .replace(0, np.nan)
+            .style.format({col: Styles.money() for col in plan.columns}),
+            column_config={
+                '_index': st.column_config.NumberColumn(format='%d')
+            }
+        )
+        st.dataframe(
+            data=securities[['Coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount', 'Description']]
+            .rename(columns=str.lower)
+            .assign(bought=securities['buy'] > 0)
+            .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False)
+            .replace(0, np.nan)
+            .style.format({
+                'coupon': Styles.percent(),
+                'price': Styles.money(2),
+                'yield': Styles.percent(),
+                'maturity_date': Styles.date(),
+                'buy': Styles.num(),
+                'amount': Styles.money(),
+                'description': Styles.string()
+            })
+        )
 
 
 class Styles:
@@ -104,7 +145,6 @@ class Styles:
     @staticmethod
     def string():
         return lambda d: ' '.join(d.split())
-
 
 if __name__ == "__main__":
     calculator = Calculator(fidelity_files=[
@@ -138,44 +178,4 @@ if __name__ == "__main__":
         2047: 36500,
         2048: 37000
     })
-
-    total_investment = securities['amount'].sum()
-    total_cashflow = plan['cashflow'].sum()
-    irr = npf.irr([-total_investment] + plan['cashflow'].tolist())
-
-    col1, col2 = st.columns(2)
-    col1.metric(
-        label='Investment',
-        value=Styles.money().format(total_investment),
-        delta='IRR ' + Styles.percent().format(irr * 100)
-    )
-    col2.metric(
-        label='Total Payout',
-        value=Styles.money().format(total_cashflow),
-        delta='MOIC ' + Styles.num(decimals=2).format(total_cashflow / total_investment) + 'x'
-    )
-
-    st.dataframe(
-        data=plan
-        .replace(0, np.nan)
-        .style.format({col: Styles.money() for col in plan.columns}),
-        column_config={
-            '_index': st.column_config.NumberColumn(format='%d')
-        }
-    )
-    st.dataframe(
-        data=securities[['Coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount', 'Description']]
-        .rename(columns=str.lower)
-        .assign(bought=securities['buy'] > 0)
-        .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False)
-        .replace(0, np.nan)
-        .style.format({
-            'coupon': Styles.percent(),
-            'price': Styles.money(2),
-            'yield': Styles.percent(),
-            'maturity_date': Styles.date(),
-            'buy': Styles.num(),
-            'amount': Styles.money(),
-            'description': Styles.string()
-        })
-    )
+    Calculator.render(plan=plan, securities=securities)
