@@ -1,9 +1,10 @@
-from datetime import date, datetime
+from datetime import date
 from dateutil.relativedelta import relativedelta
 from dateutil import rrule
 import logging
 
 import numpy as np
+import numpy_financial as npf
 import pandas as pd
 import streamlit as st
 
@@ -63,7 +64,9 @@ securities = securities[securities['Attributes'].str.contains('CP')]  # Non-call
 
 
 def buy(max_maturity_date: date):  # TODO: add tests
-    if max_maturity_date < START_DATE:
+    if max_maturity_date < START_DATE: # Done buying
+        securities['amount'] = securities['price'] * securities['buy']
+        plan['target_cashflow'] = plan['target_monthly_cashflow'] * 12
         return
 
     def cash_adjusted_yield(row):
@@ -126,11 +129,30 @@ class Styles:
 
 if __name__ == "__main__":
     buy(max_maturity_date=END_DATE)
-    securities['amount'] = securities['price'] * securities['buy']
-    plan['target_cashflow'] = plan['target_monthly_cashflow'] * 12
+    total_investment = securities['amount'].sum()
+    total_cashflow = plan['cashflow'].sum()
+    irr = npf.irr([-total_investment] + plan['cashflow'].tolist())
 
-    st.metric(label='Total Investment', value=Styles.money().format(securities['amount'].sum()))
-    st.metric(label='Total Payout', value=Styles.money().format(plan['cashflow'].sum()))
+    col1, col2 = st.columns(2)
+    col1.metric(
+        label='Investment',
+        value=Styles.money().format(total_investment),
+        delta='IRR ' + Styles.percent().format(irr*100)
+    )
+    col2.metric(
+        label='Total Payout',
+        value=Styles.money().format(total_cashflow),
+        delta='MOIC ' + Styles.num(decimals=2).format(total_cashflow/total_investment) + 'x'
+    )
+
+    st.dataframe(
+        data=plan
+        .replace(0, np.nan)
+        .style.format({col: Styles.money() for col in plan.columns}),
+        column_config={
+            '_index': st.column_config.NumberColumn(format='%d')
+        }
+    )
     st.dataframe(
         data=securities[['Coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount', 'Description']]
         .rename(columns=str.lower)
@@ -146,12 +168,4 @@ if __name__ == "__main__":
             'amount': Styles.money(),
             'description': Styles.string()
         })
-    )
-    st.dataframe(
-        data=plan
-        .replace(0, np.nan)
-        .style.format({col: Styles.money() for col in plan.columns}),
-        column_config={
-            '_index': st.column_config.NumberColumn(format='%d')
-        }
     )
