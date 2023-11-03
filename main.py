@@ -10,36 +10,36 @@ import streamlit as st
 
 ################ INPUTS ##############
 TARGET_MONTHLY_CASHFLOW_BY_YEAR = {
-    2025: 34000,
-    2026: 35000,
-    2027: 36000,
-    2028: 37000,
-    2029: 38000,
-    2030: 39000,
-    2031: 40000,
-    2032: 41000,
-    2033: 42000,
-    2034: 43000,
-    2035: 44000,
-    2036: 45000,
-    2037: 46000,
-    2038: 47000,
-    2039: 48000,
-    2040: 44000,
-    2041: 45000,
-    2042: 46000,
-    2043: 47000,
-    2044: 48000,
-    2045: 49000,
-    2046: 50000,
-    2047: 51000,
-    2048: 52000
+    2025: 33000,
+    2026: 33500,
+    2027: 34000,
+    2028: 34500,
+    2029: 35000,
+    2030: 35500,
+    2031: 36000,
+    2032: 36500,
+    2033: 37000,
+    2034: 37500,
+    2035: 38000,
+    2036: 38500,
+    2037: 39000,
+    2038: 39500,
+    2039: 40000,
+    2040: 33000,
+    2041: 33500,
+    2042: 34000,
+    2043: 34500,
+    2044: 35000,
+    2045: 35500,
+    2046: 36000,
+    2047: 36500,
+    2048: 37000
 }
 FIDELITY_FIXED_INCOME_SEARCH_RESULTS = [
     '~/Downloads/CDs.csv',
     '~/Downloads/Treasury.csv'
 ]
-CASH_OUT_APR = 1.0 / 100  # APR if we simply hold cash
+CASH_YIELD = 1.0 / 100  # yield if we simply hold cash (e.g. in a savings account)
 
 ###########################################
 
@@ -69,11 +69,11 @@ def buy(max_maturity_date: date):  # TODO: add tests
         plan['target_cashflow'] = plan['target_monthly_cashflow'] * 12
         return
 
-    def cash_adjusted_yield(row):
+    def cashout_adjusted_yield(row):
         months_in_between = max_maturity_date.month - row['maturity_date'].month + 12 * (max_maturity_date.year - row['maturity_date'].year)
-        return 0 if months_in_between <= 0 else row['yield'] / 100 - months_in_between * CASH_OUT_APR / 12
+        return 0 if months_in_between <= 0 else row['yield'] / 100 - months_in_between * CASH_YIELD / 12
 
-    securities['cash_adjusted_yield'] = securities.apply(cash_adjusted_yield, axis=1)
+    securities['cash_adjusted_yield'] = securities.apply(cashout_adjusted_yield, axis=1)
     security = securities[securities['cash_adjusted_yield'] == securities['cash_adjusted_yield'].max()].iloc[0]
     cusip = security.name
     maturity_date = security['maturity_date'].date()
