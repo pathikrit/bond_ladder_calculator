@@ -21,3 +21,6 @@ cd fixed_income_annuity/
 ```
 poetry run streamlit run main.py
 ```
+
+This will open a browser window with the portfolio construction:
+![output.png](output.png)
