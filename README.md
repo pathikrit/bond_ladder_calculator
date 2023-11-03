@@ -7,8 +7,8 @@ Running this code:
 
 1. Checkout this repo:
 ```
-git clone
-cd 
+git clone git@github.com:pathikrit/fixed_income_annuity.git
+cd fixed_income_annuity/
 ```
 
 2. Download spreadsheets of [fixed income products from Fidelity](https://fixedincome.fidelity.com/ftgw/fi/FILanding#tbindividual-bonds|treasury) that you want to purchase:

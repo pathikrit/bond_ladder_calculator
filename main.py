@@ -1,6 +1,7 @@
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from dateutil import rrule
+import logging
 
 import numpy as np
 import pandas as pd
@@ -35,7 +36,7 @@ TARGET_MONTHLY_CASHFLOW_BY_YEAR = {
     2048: 52000
 }
 FIDELITY_FIXED_INCOME_SEARCH_RESULTS = [
-    # '~/Downloads/CDs.csv',
+    '~/Downloads/CDs.csv',
     '~/Downloads/Treasury.csv'
 ]
 CASH_OUT_APR = 1.0 / 100  # APR if we simply hold cash
@@ -46,6 +47,7 @@ plan = pd.DataFrame(data=list(TARGET_MONTHLY_CASHFLOW_BY_YEAR.items()), columns=
 plan['target_cashflow'] = plan['target_monthly_cashflow'] * 12
 plan['cashflow'] = 0
 plan = plan.set_index('year')
+START_DATE = date(plan.index.min(), 1, 1)
 
 securities = pd.concat([pd.read_csv(file) for file in FIDELITY_FIXED_INCOME_SEARCH_RESULTS])
 securities['cusip'] = securities['Cusip'].str.replace('="', '').str.replace('"', '')
@@ -61,7 +63,7 @@ securities = securities[securities['Attributes'].str.contains('CP')]  # Non-call
 
 
 def buy(end_date: date):
-    if end_date.year < plan.index.min():
+    if end_date < START_DATE:
         return
 
     def cash_adjusted_yield(row):
@@ -73,19 +75,29 @@ def buy(end_date: date):
         .sort_values(by=['maturity_date'], ascending=False).iloc[0]
     cusip = security.name
 
-    print(f"Found CUSIP = {cusip} for {end_date} with maturity={security['maturity_date']}")
+    logging.debug(f"Found CUSIP={cusip} for maturity={security['maturity_date']} to cover until end_date={end_date}")
     plan[f'cashflow_{cusip}'] = 0.0
+
+    cash_needed_at_maturity = 0
     for date in reversed(list(rrule.rrule(rrule.MONTHLY, dtstart=security['maturity_date'].replace(day=1), until=end_date))):
         if not date.year in plan.index:
             continue
-        cash_for_this_month = plan.loc[date.year, 'target_cashflow'] / date.month
-        plan.loc[date.year, 'target_cashflow'] -= cash_for_this_month
-        plan.loc[date.year, f'cashflow_{cusip}'] += cash_for_this_month
-        print(f"\tCash needed for {date} = {cash_for_this_month}")
+        cash_needed_for_this_month = plan.loc[date.year, 'target_cashflow'] / date.month
+        plan.loc[date.year, 'target_cashflow'] -= cash_needed_for_this_month
+        plan.loc[date.year, f'cashflow_{cusip}'] += cash_needed_for_this_month
+        cash_needed_at_maturity += cash_needed_for_this_month
+        logging.debug(f"\tCash needed for {date} = {cash_needed_for_this_month}")
+
+    quantity = max(0, cash_needed_at_maturity) // security['redemption']
+    securities.loc[cusip, 'buy'] = quantity
+
+    for date in rrule.rrule(rrule.YEARLY, dtstart=START_DATE, until=security['maturity_date']):
+        dividend = security['rate'] * security['redemption'] * quantity
+        plan.loc[date.year, f'cashflow_{cusip}'] += dividend
+        plan.loc[date.year, 'target_cashflow'] -= dividend
 
     plan['cashflow'] += plan[f'cashflow_{cusip}']
-    securities.loc[cusip, 'buy'] = plan[f'cashflow_{cusip}'].sum() // security['redemption']
-    buy(security['maturity_date'] - relativedelta(days=1))
+    buy(security['maturity_date'].date() - relativedelta(days=1))
 
 
 class Styles:
@@ -117,10 +129,12 @@ if __name__ == "__main__":
     )
 
     st.dataframe(
-        data=securities[['price', 'yield', 'maturity_date', 'buy', 'amount', 'Description', ]]
+        data=securities[['Coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount', 'Description', ]]
         .assign(bought=securities['buy'] > 0)
         .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False)
+        .replace(0, np.nan)
         .style.format({
+            'rate': Styles.percent(),
             'price': Styles.money(2),
             'Coupon': Styles.percent(),
             'yield': Styles.percent(),
@@ -139,8 +153,4 @@ if __name__ == "__main__":
         }
     )
 
-### TODO
-# 1. Unit tests
-# 2. add function types
-# 3. logging
-####
+# TODO: add tests
