@@ -107,13 +107,14 @@ class Calculator:
                 '_index': st.column_config.NumberColumn(format='%d')
             }
         )
-        st.dataframe(
-            data=securities[['coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount', 'Description']]
+        st.write(
+            securities[['coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount', 'Description']]
             .rename(columns=str.lower)
             .assign(bought=securities['buy'] > 0)
             .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False)
-            .replace(0, np.nan)
+            .reset_index()
             .style.format({
+                'cusip': Styles.security(),
                 'coupon': Styles.percent(),
                 'price': Styles.money(2),
                 'yield': Styles.percent(),
@@ -122,6 +123,8 @@ class Calculator:
                 'amount': Styles.money(),
                 'description': Styles.string()
             })
+            .to_html(),
+            unsafe_allow_html=True
         )
 
 
@@ -146,9 +149,9 @@ class Styles:
     def string():
         return lambda d: ' '.join(d.split())
 
-    # @staticmethod
-    # def security():
-    #     return lambda cusip: f'<a href="https://oltx.fidelity.com/ftgw/fbc/oftrade/EntrOrder?ORDER_TYPE=F&ORDERSYSTEM=TORD&BROKERAGE_ORDER_ACTION=B&SECURITY_ID=${cusip}" target="_blank">${cusip}</a>'
+    @staticmethod
+    def security():
+        return lambda cusip: f'<a href="https://oltx.fidelity.com/ftgw/fbc/oftrade/EntrOrder?ORDER_TYPE=F&ORDERSYSTEM=TORD&BROKERAGE_ORDER_ACTION=B&SECURITY_ID={cusip}" target="_blank">{cusip}</a>'
 
 if __name__ == "__main__":
     calculator = Calculator(fidelity_files=[
