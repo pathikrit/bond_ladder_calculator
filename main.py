@@ -71,7 +71,7 @@ class Calculator:
 
             if security['coupon'] > 0:  # if this pays dividends
                 for dt in rrule.rrule(rrule.YEARLY, dtstart=start_date, until=maturity_date):
-                    dividend = security['coupon']/100 * security['redemption'] * quantity
+                    dividend = security['coupon'] / 100 * security['redemption'] * quantity
                     plan.loc[dt.year, f'cashflow_{cusip}'] += dividend
                     plan.loc[dt.year, 'target_cashflow'] -= dividend
                 plan['target_cashflow'] = plan['target_cashflow'].clip(lower=0)  # sometimes dividend payout may exceed our needs by a bit
@@ -107,14 +107,13 @@ class Calculator:
                 '_index': st.column_config.NumberColumn(format='%d')
             }
         )
-        st.write(
-            securities[['coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount', 'Description']]
+        st.dataframe(
+            data=securities[['coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount', 'Description']]
             .rename(columns=str.lower)
             .assign(bought=securities['buy'] > 0)
+            .assign(link=securities.index.to_series().map(Styles.security))
             .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False)
-            .reset_index()
             .style.format({
-                'cusip': Styles.security(),
                 'coupon': Styles.percent(),
                 'price': Styles.money(2),
                 'yield': Styles.percent(),
@@ -122,9 +121,10 @@ class Calculator:
                 'buy': Styles.num(),
                 'amount': Styles.money(),
                 'description': Styles.string()
-            })
-            .to_html(),
-            unsafe_allow_html=True
+            }),
+            column_config={
+                "link": st.column_config.LinkColumn()
+            },
         )
 
 
@@ -150,13 +150,14 @@ class Styles:
         return lambda d: ' '.join(d.split())
 
     @staticmethod
-    def security():
-        return lambda cusip: f'<a href="https://oltx.fidelity.com/ftgw/fbc/oftrade/EntrOrder?ORDER_TYPE=F&ORDERSYSTEM=TORD&BROKERAGE_ORDER_ACTION=B&SECURITY_ID={cusip}" target="_blank">{cusip}</a>'
+    def security(cusip):
+        return f'https://oltx.fidelity.com/ftgw/fbc/oftrade/EntrOrder?ORDER_TYPE=F&ORDERSYSTEM=TORD&BROKERAGE_ORDER_ACTION=B&SECURITY_ID={cusip}'
+
 
 if __name__ == "__main__":
     calculator = Calculator(fidelity_files=[
         '~/Downloads/Treasury_6Nov2023.csv',
-        #'~/Downloads/All_7Nov2023.csv'
+        # '~/Downloads/All_7Nov2023.csv'
     ])
     # {year: 30000 + (year - 2025) * 200 for year in range(2025, 2049)}
     plan, securities = calculator.calculate(target_monthly_cashflow_by_year={
