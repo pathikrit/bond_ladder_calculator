@@ -17,7 +17,7 @@ cd fixed_income_annuity/
 
 ![fidelity.png](fidelity.png)
 
-3. Modify last few lines of [main.py](main.py#L150) to specify your target cashflow and path to above downloaded files. 
+3. Modify last few lines of [main.py](main.py#L170) to specify your target cashflow and path to above downloaded files (see example in [tests](tests/tests.py)) 
 
 4. Run: 
 ```

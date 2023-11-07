@@ -8,7 +8,7 @@ class CalculatarTest(TestCase):
             'tests/fidelity_downloads/Treasury_6Nov2023.csv',
             'tests/fidelity_downloads/All_7Nov2023.csv'
         ])
-        plan, securities = calculator.calculate(target_monthly_cashflow_by_year={
+        result = calculator.calculate(target_monthly_cashflow_by_year={
             2025: 33000,
             2026: 33500,
             2027: 34000,
@@ -34,7 +34,5 @@ class CalculatarTest(TestCase):
             2047: 36500,
             2048: 37000
         })
-        total_investment = securities['amount'].sum()
-        total_cashflow = plan['actual_cashflow'].sum()
-        self.assertEqual(int(total_investment),  5708297)
-        self.assertEqual(int(total_cashflow),  10364759)
+        self.assertEqual(int(result.total_investment),  5708297)
+        self.assertEqual(int(result.total_cashflow),  10364759)

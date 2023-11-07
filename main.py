@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from dateutil import rrule
@@ -46,7 +47,7 @@ class Calculator:
             if max_maturity_date < start_date:  # Done buying
                 securities['amount'] = securities['price'] * securities['buy']
                 plan['target_cashflow'] = plan['target_monthly_cashflow'] * 12
-                return plan, securities
+                return Result(plan=plan, securities=securities)
 
             def cashout_adjusted_yield(row):
                 months_in_between = max_maturity_date.month - row['maturity_date'].month + 12 * (max_maturity_date.year - row['maturity_date'].year)
@@ -82,33 +83,29 @@ class Calculator:
         return buy(max_maturity_date=end_date)
 
     @staticmethod
-    def render(plan, securities):
-        total_investment = securities['amount'].sum()
-        total_cashflow = plan['actual_cashflow'].sum()
-        irr = npf.irr([-total_investment] + plan['actual_cashflow'].tolist())
-
+    def render(result):
         col1, col2 = st.columns(2)
         col1.metric(
             label='Investment',
-            value=Styles.money().format(total_investment),
-            delta='IRR ' + Styles.percent().format(irr * 100)
+            value=Styles.money().format(result.total_investment),
+            delta='IRR ' + Styles.percent().format(result.irr * 100)
         )
         col2.metric(
             label='Total Payout',
-            value=Styles.money().format(total_cashflow),
-            delta='MOIC ' + Styles.num(decimals=2).format(total_cashflow / total_investment) + 'x'
+            value=Styles.money().format(result.total_cashflow),
+            delta='MOIC ' + Styles.num(decimals=2).format(result.total_cashflow / result.total_investment) + 'x'
         )
 
         st.dataframe(
-            data=plan
+            data=result.plan
             .replace(0, np.nan)
-            .style.format({col: Styles.money() for col in plan.columns}),
+            .style.format({col: Styles.money() for col in result.plan.columns}),
             column_config={
                 '_index': st.column_config.NumberColumn(format='%d')
             }
         )
 
-        cashflow_cols = list(filter(lambda col: col.startswith('cashflow'), securities.columns))
+        cashflow_cols = list(filter(lambda col: col.startswith('cashflow'), result.securities.columns))
         securities_style = {
             'coupon': Styles.percent(),
             'price': Styles.money(2),
@@ -121,16 +118,34 @@ class Calculator:
         for col in cashflow_cols:
             securities_style[col] = Styles.money()
         st.dataframe(
-            data=securities[['coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount', 'Description'] + cashflow_cols]
+            data=result.securities[['coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount', 'Description'] + cashflow_cols]
             .rename(columns=str.lower)
-            .assign(bought=securities['buy'] > 0)
-            .assign(link=securities.index.to_series().map(Styles.security))
+            .assign(bought=result.securities['buy'] > 0)
+            .assign(link=result.securities.index.to_series().map(Styles.security))
             .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False)
             .style.format(securities_style),
             column_config={
                 "link": st.column_config.LinkColumn()
             },
         )
+
+
+@dataclass
+class Result:
+    securities: pd.DataFrame
+    plan: pd.DataFrame
+
+    @property
+    def total_investment(self):
+        return self.securities['amount'].sum()
+
+    @property
+    def total_cashflow(self):
+        return self.plan['actual_cashflow'].sum()
+
+    @property
+    def irr(self):
+        return npf.irr([-self.total_investment] + self.plan['actual_cashflow'].tolist())
 
 
 class Styles:
@@ -159,36 +174,15 @@ class Styles:
         return f'https://oltx.fidelity.com/ftgw/fbc/oftrade/EntrOrder?ORDER_TYPE=F&ORDERSYSTEM=TORD&BROKERAGE_ORDER_ACTION=B&SECURITY_ID={cusip}'
 
 
-if __name__ == "__main__":
+def main():
     calculator = Calculator(fidelity_files=[
         '~/Downloads/Treasury_6Nov2023.csv',
         '~/Downloads/All_7Nov2023.csv'
     ])
-    # {year: 30000 + (year - 2025) * 200 for year in range(2025, 2049)}
-    plan, securities = calculator.calculate(target_monthly_cashflow_by_year={
-        2025: 33000,
-        2026: 33500,
-        2027: 34000,
-        2028: 34500,
-        2029: 35000,
-        2030: 35500,
-        2031: 36000,
-        2032: 36500,
-        2033: 37000,
-        2034: 37500,
-        2035: 38000,
-        2036: 38500,
-        2037: 39000,
-        2038: 39500,
-        2039: 40000,
-        2040: 33000,
-        2041: 33500,
-        2042: 34000,
-        2043: 34500,
-        2044: 35000,
-        2045: 35500,
-        2046: 36000,
-        2047: 36500,
-        2048: 37000
-    })
-    Calculator.render(plan=plan, securities=securities)
+    Calculator.render(calculator.calculate(
+        target_monthly_cashflow_by_year={year: 30000 + (year - 2025) * 250 for year in range(2025, 2050)}
+    ))
+
+
+if __name__ == "__main__":
+    main()
