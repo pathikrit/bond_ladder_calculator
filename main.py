@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from datetime import date
+from typing import List, Dict
+
 from dateutil.relativedelta import relativedelta
 from dateutil import rrule
 import logging
@@ -9,9 +11,25 @@ import numpy_financial as npf
 import pandas as pd
 import streamlit as st
 
+@dataclass
+class Result:
+    securities: pd.DataFrame
+    plan: pd.DataFrame
+
+    @property
+    def total_investment(self) -> float:
+        return self.securities['amount'].sum()
+
+    @property
+    def total_cashflow(self) -> float:
+        return self.plan['actual_cashflow'].sum()
+
+    @property
+    def irr(self) -> float:
+        return npf.irr([-self.total_investment] + self.plan['actual_cashflow'].tolist())
 
 class Calculator:
-    def __init__(self, fidelity_files):
+    def __init__(self, fidelity_files: List[str]):
         securities = pd.concat([pd.read_csv(file) for file in fidelity_files])
         securities = securities.dropna(subset=['Cusip', 'Attributes'])
         securities['cusip'] = securities['Cusip'].str.replace('="', '').str.replace('"', '')
@@ -26,7 +44,7 @@ class Calculator:
         securities = securities[securities['Attributes'].str.contains('CP')]  # Call Protected bonds only
         self.securities = securities
 
-    def calculate(self, target_monthly_cashflow_by_year, cash_yield=1.0 / 100):
+    def calculate(self, target_monthly_cashflow_by_year: Dict[int, float], cash_yield: float=1.0 / 100) -> Result:
         """
         :param target_monthly_cashflow_by_year: kv of year to monthly cashflow needed for that year
         :param cash_yield: yield if we simply hold cash (e.g. in a savings account)
@@ -43,13 +61,13 @@ class Calculator:
         for year in range(start_date.year, end_date.year + 1):
             securities[f'cashflow_{year}'] = 0.0
 
-        def buy(max_maturity_date: date):
+        def buy(max_maturity_date: date) -> Result:
             if max_maturity_date < start_date:  # Done buying
                 securities['amount'] = securities['price'] * securities['buy']
                 plan['target_cashflow'] = plan['target_monthly_cashflow'] * 12
                 return Result(plan=plan, securities=securities)
 
-            def cashout_adjusted_yield(row):
+            def cashout_adjusted_yield(row) -> float:
                 months_in_between = max_maturity_date.month - row['maturity_date'].month + 12 * (max_maturity_date.year - row['maturity_date'].year)
                 return 0 if months_in_between <= 0 else row['yield'] / 100 - months_in_between * cash_yield / 12
 
@@ -60,7 +78,7 @@ class Calculator:
 
             logging.debug(f"Found CUSIP={cusip} with maturity_date={maturity_date} to cover until end_date={max_maturity_date}")
 
-            def update(date, amount, prefix):
+            def update(date, amount: float, prefix: str) -> None:
                 logging.debug(f"\t{prefix} for {date} = {amount}")
                 securities.loc[cusip, 'cashflow'] += amount
                 securities.loc[cusip, f'cashflow_{date.year}'] += amount
@@ -83,7 +101,7 @@ class Calculator:
         return buy(max_maturity_date=end_date)
 
     @staticmethod
-    def render(result):
+    def render(result: Result) -> None:
         col1, col2 = st.columns(2)
         col1.metric(
             label='Investment',
@@ -130,24 +148,6 @@ class Calculator:
         )
 
 
-@dataclass
-class Result:
-    securities: pd.DataFrame
-    plan: pd.DataFrame
-
-    @property
-    def total_investment(self):
-        return self.securities['amount'].sum()
-
-    @property
-    def total_cashflow(self):
-        return self.plan['actual_cashflow'].sum()
-
-    @property
-    def irr(self):
-        return npf.irr([-self.total_investment] + self.plan['actual_cashflow'].tolist())
-
-
 class Styles:
     @staticmethod
     def money(decimals=0):
@@ -170,7 +170,7 @@ class Styles:
         return lambda d: ' '.join(d.split())
 
     @staticmethod
-    def security(cusip):
+    def security(cusip: str):
         return f'https://oltx.fidelity.com/ftgw/fbc/oftrade/EntrOrder?ORDER_TYPE=F&ORDERSYSTEM=TORD&BROKERAGE_ORDER_ACTION=B&SECURITY_ID={cusip}'
 
 
