@@ -5,8 +5,8 @@ from main import Calculator
 class CalculatarTest(TestCase):
     def test_calculate(self):
         calculator = Calculator(fidelity_files=[
-            'tests/downloads/Treasury_6Nov2023.csv',
-            'tests/downloads/All_7Nov2023.csv'
+            'tests/fidelity_downloads/Treasury_6Nov2023.csv',
+            'tests/fidelity_downloads/All_7Nov2023.csv'
         ])
         plan, securities = calculator.calculate(target_monthly_cashflow_by_year={
             2025: 33000,

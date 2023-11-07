@@ -42,7 +42,7 @@ class Calculator:
         for year in range(start_date.year, end_date.year + 1):
             securities[f'cashflow_{year}'] = 0.0
 
-        def buy(max_maturity_date: date):  # TODO: add tests
+        def buy(max_maturity_date: date):
             if max_maturity_date < start_date:  # Done buying
                 securities['amount'] = securities['price'] * securities['buy']
                 plan['target_cashflow'] = plan['target_monthly_cashflow'] * 12
