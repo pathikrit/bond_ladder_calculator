@@ -1,0 +1,10 @@
+[FORMAT]
+max-line-length=150
+
+[MASTER]
+disable=
+    C0114, # missing-module-docstring
+    C0115, # missing-class-docstring
+    C0116, # missing-function-docstring
+    E1136, # https://github.com/pylint-dev/pylint/issues/3637
+    E1137  # https://github.com/pylint-dev/pylint/issus/7564

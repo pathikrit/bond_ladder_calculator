@@ -2,9 +2,9 @@ from dataclasses import dataclass
 from datetime import date
 from typing import List, Dict
 
+import logging
 from dateutil.relativedelta import relativedelta
 from dateutil import rrule
-import logging
 
 import numpy as np
 import numpy_financial as npf
@@ -76,10 +76,10 @@ class Calculator:
             cusip = security.name
             maturity_date = security['maturity_date'].date()
 
-            logging.debug(f"Found CUSIP={cusip} with maturity_date={maturity_date} to cover until end_date={max_maturity_date}")
+            logging.debug('Found CUSIP=%s with maturity_date=%s to cover until end_date=%s', cusip, maturity_date, max_maturity_date)
 
             def update(date, amount: float, prefix: str) -> None:
-                logging.debug(f"\t{prefix} for {date} = {amount}")
+                logging.debug('\t%s for %s = %f', prefix, date, amount)
                 securities.loc[cusip, 'cashflow'] += amount
                 securities.loc[cusip, f'cashflow_{date.year}'] += amount
                 plan.loc[date.year, 'actual_cashflow'] += amount
@@ -94,9 +94,11 @@ class Calculator:
 
             if security['coupon'] > 0:  # if this pays dividends
                 for date in rrule.rrule(rrule.YEARLY, dtstart=start_date, until=maturity_date):
-                    update(date=date, amount=security['redemption'] * securities.loc[cusip, 'buy'] * security['coupon'] / 100, prefix='Dividend')
+                    amount = security['redemption'] * securities.loc[cusip, 'buy'] * security['coupon'] / 100
+                    update(date=date, amount=amount, prefix='Dividend')
 
-            return buy(max_maturity_date=maturity_date - relativedelta(days=1))  # buy next security with max maturity date 1 day before this one matures
+            # buy next security with max maturity date 1 day before this one matures
+            return buy(max_maturity_date=maturity_date - relativedelta(days=1))
 
         return buy(max_maturity_date=end_date)
 
@@ -143,7 +145,7 @@ class Calculator:
             .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False)
             .style.format(securities_style),
             column_config={
-                "link": st.column_config.LinkColumn()
+                'link': st.column_config.LinkColumn()
             },
         )
 
@@ -163,7 +165,7 @@ class Styles:
 
     @staticmethod
     def date():
-        return lambda t: t.strftime("%Y-%m-%d")
+        return lambda t: t.strftime('%Y-%m-%d')
 
     @staticmethod
     def string():
@@ -184,5 +186,5 @@ def main():
     ))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
