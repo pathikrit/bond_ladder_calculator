@@ -38,6 +38,9 @@ class Calculator:
         plan = plan.set_index('year')
         securities = self.securities.copy()
 
+        for year in range(start_date.year, end_date.year+1):
+            securities[f'cashflow_{year}'] = 0.0
+
         def buy(max_maturity_date: date):  # TODO: add tests
             if max_maturity_date < start_date:  # Done buying
                 securities['amount'] = securities['price'] * securities['buy']
@@ -54,15 +57,15 @@ class Calculator:
             maturity_date = security['maturity_date'].date()
 
             logging.debug(f"Found CUSIP={cusip} with maturity_date={maturity_date} to cover until end_date={max_maturity_date}")
-            plan[f'cashflow_{cusip}'] = 0.0
 
-            cash_needed_at_maturity = 0
+            cash_needed_at_maturity = 0.0
             for dt in reversed(list(rrule.rrule(rrule.MONTHLY, dtstart=maturity_date.replace(day=1), until=max_maturity_date))):
                 if not dt.year in plan.index:
                     continue
                 cash_needed_for_this_month = plan.loc[dt.year, 'target_cashflow'] / dt.month
+                securities.loc[cusip, f'cashflow_{dt.year}'] += cash_needed_for_this_month
+                plan.loc[dt.year, 'cashflow'] += cash_needed_for_this_month
                 plan.loc[dt.year, 'target_cashflow'] -= cash_needed_for_this_month
-                plan.loc[dt.year, f'cashflow_{cusip}'] += cash_needed_for_this_month
                 cash_needed_at_maturity += cash_needed_for_this_month
                 logging.debug(f"\tCash needed for {dt} = {cash_needed_for_this_month}")
 
@@ -72,11 +75,11 @@ class Calculator:
             if security['coupon'] > 0:  # if this pays dividends
                 for dt in rrule.rrule(rrule.YEARLY, dtstart=start_date, until=maturity_date):
                     dividend = security['coupon'] / 100 * security['redemption'] * quantity
-                    plan.loc[dt.year, f'cashflow_{cusip}'] += dividend
+                    securities.loc[cusip, f'cashflow_{dt.year}'] += dividend
+                    plan.loc[dt.year, 'cashflow'] += dividend
                     plan.loc[dt.year, 'target_cashflow'] -= dividend
                 plan['target_cashflow'] = plan['target_cashflow'].clip(lower=0)  # sometimes dividend payout may exceed our needs by a bit
 
-            plan['cashflow'] += plan[f'cashflow_{cusip}']
             return buy(max_maturity_date=maturity_date - relativedelta(days=1))  # buy next security with max maturity date 1 day before this one matures
 
         return buy(max_maturity_date=end_date)
@@ -107,21 +110,28 @@ class Calculator:
                 '_index': st.column_config.NumberColumn(format='%d')
             }
         )
+
+        cashflow_cols = list(filter(lambda col: col.startswith('cashflow'), securities.columns))
+        securities_style = {
+            'coupon': Styles.percent(),
+            'price': Styles.money(2),
+            'yield': Styles.percent(),
+            'maturity_date': Styles.date(),
+            'buy': Styles.num(),
+            'amount': Styles.money(),
+            'description': Styles.string()
+        }
+
+        for col in cashflow_cols:
+            securities_style[col] = Styles.money()
+
         st.dataframe(
-            data=securities[['coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount', 'Description']]
+            data=securities[['coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount', 'Description'] + cashflow_cols]
             .rename(columns=str.lower)
             .assign(bought=securities['buy'] > 0)
             .assign(link=securities.index.to_series().map(Styles.security))
             .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False)
-            .style.format({
-                'coupon': Styles.percent(),
-                'price': Styles.money(2),
-                'yield': Styles.percent(),
-                'maturity_date': Styles.date(),
-                'buy': Styles.num(),
-                'amount': Styles.money(),
-                'description': Styles.string()
-            }),
+            .style.format(securities_style),
             column_config={
                 "link": st.column_config.LinkColumn()
             },
