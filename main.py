@@ -38,7 +38,7 @@ class Calculator:
         plan = plan.set_index('year')
         securities = self.securities.copy()
 
-        for year in range(start_date.year, end_date.year+1):
+        for year in range(start_date.year, end_date.year + 1):
             securities[f'cashflow_{year}'] = 0.0
 
         def buy(max_maturity_date: date):  # TODO: add tests
@@ -58,27 +58,26 @@ class Calculator:
 
             logging.debug(f"Found CUSIP={cusip} with maturity_date={maturity_date} to cover until end_date={max_maturity_date}")
 
+            def update(dt, amount):
+                securities.loc[cusip, f'cashflow_{dt.year}'] += amount
+                plan.loc[dt.year, 'cashflow'] += amount
+                plan.loc[dt.year, 'target_cashflow'] -= amount
+                plan['target_cashflow'] = plan['target_cashflow'].clip(lower=0)  # sometimes dividend payout may exceed our needs by a bit
+
             cash_needed_at_maturity = 0.0
             for dt in reversed(list(rrule.rrule(rrule.MONTHLY, dtstart=maturity_date.replace(day=1), until=max_maturity_date))):
-                if not dt.year in plan.index:
+                if dt.year not in plan.index:
                     continue
                 cash_needed_for_this_month = plan.loc[dt.year, 'target_cashflow'] / dt.month
-                securities.loc[cusip, f'cashflow_{dt.year}'] += cash_needed_for_this_month
-                plan.loc[dt.year, 'cashflow'] += cash_needed_for_this_month
-                plan.loc[dt.year, 'target_cashflow'] -= cash_needed_for_this_month
+                update(dt=dt, amount=cash_needed_for_this_month)
                 cash_needed_at_maturity += cash_needed_for_this_month
                 logging.debug(f"\tCash needed for {dt} = {cash_needed_for_this_month}")
 
-            quantity = max(0, cash_needed_at_maturity) // security['redemption']
-            securities.loc[cusip, 'buy'] = quantity
+            securities.loc[cusip, 'buy'] = cash_needed_at_maturity // security['redemption']
 
             if security['coupon'] > 0:  # if this pays dividends
                 for dt in rrule.rrule(rrule.YEARLY, dtstart=start_date, until=maturity_date):
-                    dividend = security['coupon'] / 100 * security['redemption'] * quantity
-                    securities.loc[cusip, f'cashflow_{dt.year}'] += dividend
-                    plan.loc[dt.year, 'cashflow'] += dividend
-                    plan.loc[dt.year, 'target_cashflow'] -= dividend
-                plan['target_cashflow'] = plan['target_cashflow'].clip(lower=0)  # sometimes dividend payout may exceed our needs by a bit
+                    update(dt=dt, amount=security['redemption'] * securities.loc[cusip, 'buy'] * security['coupon'] / 100)
 
             return buy(max_maturity_date=maturity_date - relativedelta(days=1))  # buy next security with max maturity date 1 day before this one matures
 
