@@ -21,7 +21,7 @@ class Calculator:
         securities['yield'] = securities['Ask Yield to Worst']
         securities['maturity_date'] = pd.to_datetime(securities['Maturity Date'], format='%m/%d/%Y')
         securities['buy'] = 0
-        #securities = securities[securities['Attributes'].str.contains('CP')]  # Non-callable bonds only
+        securities = securities[securities['Attributes'].str.contains('CP')]  # Call Protected bonds only
         self.securities = securities
 
     def calculate(self, target_monthly_cashflow_by_year, cash_yield=1.0 / 100):
@@ -33,13 +33,13 @@ class Calculator:
         plan = pd.DataFrame(data=list(target_monthly_cashflow_by_year.items()), columns=['year', 'target_monthly_cashflow'])
         plan['target_cashflow'] = plan['target_monthly_cashflow'] * 12
         plan['cashflow'] = 0
-        START_DATE = date(year=plan['year'].min(), month=1, day=1)
-        END_DATE = date(year=plan['year'].max(), month=12, day=31)
+        start_date = date(year=plan['year'].min(), month=1, day=1)
+        end_date = date(year=plan['year'].max(), month=12, day=31)
         plan = plan.set_index('year')
         securities = self.securities.copy()
 
         def buy(max_maturity_date: date):  # TODO: add tests
-            if max_maturity_date < START_DATE:  # Done buying
+            if max_maturity_date < start_date:  # Done buying
                 securities['amount'] = securities['price'] * securities['buy']
                 plan['target_cashflow'] = plan['target_monthly_cashflow'] * 12
                 return plan, securities
@@ -70,7 +70,7 @@ class Calculator:
             securities.loc[cusip, 'buy'] = quantity
 
             if security['coupon'] > 0:  # if this pays dividends
-                for dt in rrule.rrule(rrule.YEARLY, dtstart=START_DATE, until=maturity_date):
+                for dt in rrule.rrule(rrule.YEARLY, dtstart=start_date, until=maturity_date):
                     dividend = security['coupon']/100 * security['redemption'] * quantity
                     plan.loc[dt.year, f'cashflow_{cusip}'] += dividend
                     plan.loc[dt.year, 'target_cashflow'] -= dividend
@@ -79,7 +79,7 @@ class Calculator:
             plan['cashflow'] += plan[f'cashflow_{cusip}']
             return buy(max_maturity_date=maturity_date - relativedelta(days=1))  # buy next security with max maturity date 1 day before this one matures
 
-        return buy(max_maturity_date=END_DATE)
+        return buy(max_maturity_date=end_date)
 
     @staticmethod
     def render(plan, securities):
@@ -146,10 +146,14 @@ class Styles:
     def string():
         return lambda d: ' '.join(d.split())
 
+    # @staticmethod
+    # def security():
+    #     return lambda cusip: f'<a href="https://oltx.fidelity.com/ftgw/fbc/oftrade/EntrOrder?ORDER_TYPE=F&ORDERSYSTEM=TORD&BROKERAGE_ORDER_ACTION=B&SECURITY_ID=${cusip}" target="_blank">${cusip}</a>'
+
 if __name__ == "__main__":
     calculator = Calculator(fidelity_files=[
-        '~/Downloads/Treasury_2Nov2023.csv',
-        '~/Downloads/All_7Nov2023.csv'
+        '~/Downloads/Treasury_6Nov2023.csv',
+        #'~/Downloads/All_7Nov2023.csv'
     ])
     # {year: 30000 + (year - 2025) * 200 for year in range(2025, 2049)}
     plan, securities = calculator.calculate(target_monthly_cashflow_by_year={
