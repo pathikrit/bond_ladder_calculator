@@ -32,8 +32,8 @@ class Calculator:
         :return: 2 dataframes - (plan, securities)
         """
         plan = pd.DataFrame(data=list(target_monthly_cashflow_by_year.items()), columns=['year', 'target_monthly_cashflow'])
-        plan['target_cashflow'] = plan['target_monthly_cashflow'] * 12
-        plan['actual_cashflow'] = 0
+        plan['target_cashflow'] = plan['target_monthly_cashflow'] * 12 * 1.0
+        plan['actual_cashflow'] = 0.0
         start_date = date(year=plan['year'].min(), month=1, day=1)
         end_date = date(year=plan['year'].max(), month=12, day=31)
         plan = plan.set_index('year')
@@ -162,7 +162,7 @@ class Styles:
 if __name__ == "__main__":
     calculator = Calculator(fidelity_files=[
         '~/Downloads/Treasury_6Nov2023.csv',
-        # '~/Downloads/All_7Nov2023.csv'
+        '~/Downloads/All_7Nov2023.csv'
     ])
     # {year: 30000 + (year - 2025) * 200 for year in range(2025, 2049)}
     plan, securities = calculator.calculate(target_monthly_cashflow_by_year={

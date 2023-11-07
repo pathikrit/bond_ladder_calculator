@@ -1,4 +1,4 @@
-Fixed Income to Annuity
+Fixed Income to Annuity [![Tests](https://github.com/pathikrit/fixed_income_annuity/actions/workflows/test.yml/badge.svg)](https://github.com/pathikrit/fixed_income_annuity/actions/workflows/test.yml)
 ----
 
 * Constructs an [annuity](https://www.investopedia.com/investing/overview-of-annuities/) with custom cashflow out of [bonds]([https://fixedincome.fidelity.com/ftgw/fi/FILanding#tbindividual-bonds|treasury](https://www.investopedia.com/financial-edge/0312/the-basics-of-bonds.aspx))
