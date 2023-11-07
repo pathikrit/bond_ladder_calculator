@@ -68,9 +68,8 @@ class Calculator:
                 plan['target_cashflow'] = plan['target_cashflow'].clip(lower=0)  # sometimes dividend payout may exceed our needs by a bit
 
             for date in reversed(list(rrule.rrule(rrule.MONTHLY, dtstart=maturity_date.replace(day=1), until=max_maturity_date))):
-                if date.year not in plan.index:
-                    continue
-                update(date=date, amount=plan.loc[date.year, 'target_cashflow'] / date.month, prefix='Cash needed')
+                if date.year in plan.index:
+                    update(date=date, amount=plan.loc[date.year, 'target_cashflow'] / date.month, prefix='Cash needed')
 
             securities.loc[cusip, 'buy'] = securities.loc[cusip, 'cashflow'] // security['redemption']
 
@@ -119,10 +118,8 @@ class Calculator:
             'amount': Styles.money(),
             'description': Styles.string()
         }
-
         for col in cashflow_cols:
             securities_style[col] = Styles.money()
-
         st.dataframe(
             data=securities[['coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount', 'Description'] + cashflow_cols]
             .rename(columns=str.lower)
