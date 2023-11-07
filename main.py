@@ -12,16 +12,16 @@ import streamlit as st
 class Calculator:
     def __init__(self, fidelity_files):
         securities = pd.concat([pd.read_csv(file) for file in fidelity_files])
+        securities = securities.dropna(subset=['Cusip', 'Attributes'])
         securities['cusip'] = securities['Cusip'].str.replace('="', '').str.replace('"', '')
         securities = securities.set_index('cusip')
-        securities['rate'] = securities['Coupon'] / 100
+        securities['coupon'] = pd.to_numeric(securities['Coupon'], errors='coerce').replace(np.nan, 0)
         securities['price'] = securities['Price Ask']
         securities['redemption'] = 100
         securities['yield'] = securities['Ask Yield to Worst']
         securities['maturity_date'] = pd.to_datetime(securities['Maturity Date'], format='%m/%d/%Y')
         securities['buy'] = 0
-        securities = securities.dropna(subset=['rate'])
-        securities = securities[securities['Attributes'].str.contains('CP')]  # Non-callable bonds only
+        #securities = securities[securities['Attributes'].str.contains('CP')]  # Non-callable bonds only
         self.securities = securities
 
     def calculate(self, target_monthly_cashflow_by_year, cash_yield=1.0 / 100):
@@ -69,9 +69,9 @@ class Calculator:
             quantity = max(0, cash_needed_at_maturity) // security['redemption']
             securities.loc[cusip, 'buy'] = quantity
 
-            if security['rate'] > 0:  # if this pays dividends
+            if security['coupon'] > 0:  # if this pays dividends
                 for dt in rrule.rrule(rrule.YEARLY, dtstart=START_DATE, until=maturity_date):
-                    dividend = security['rate'] * security['redemption'] * quantity
+                    dividend = security['coupon']/100 * security['redemption'] * quantity
                     plan.loc[dt.year, f'cashflow_{cusip}'] += dividend
                     plan.loc[dt.year, 'target_cashflow'] -= dividend
                 plan['target_cashflow'] = plan['target_cashflow'].clip(lower=0)  # sometimes dividend payout may exceed our needs by a bit
@@ -108,7 +108,7 @@ class Calculator:
             }
         )
         st.dataframe(
-            data=securities[['Coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount', 'Description']]
+            data=securities[['coupon', 'price', 'yield', 'maturity_date', 'buy', 'amount', 'Description']]
             .rename(columns=str.lower)
             .assign(bought=securities['buy'] > 0)
             .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False)
@@ -148,8 +148,8 @@ class Styles:
 
 if __name__ == "__main__":
     calculator = Calculator(fidelity_files=[
-        '~/Downloads/CDs.csv',
-        '~/Downloads/Treasury.csv'
+        '~/Downloads/Treasury_2Nov2023.csv',
+        '~/Downloads/All_7Nov2023.csv'
     ])
     # {year: 30000 + (year - 2025) * 200 for year in range(2025, 2049)}
     plan, securities = calculator.calculate(target_monthly_cashflow_by_year={
