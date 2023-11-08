@@ -2,7 +2,8 @@ from unittest import TestCase
 
 from main import Calculator
 
-class CalculatarTest(TestCase):
+
+class TestCalculator(TestCase):
     def test_calculate(self):
         calculator = Calculator(fidelity_files=[
             'tests/fidelity_downloads/Treasury_6Nov2023.csv',
@@ -34,5 +35,5 @@ class CalculatarTest(TestCase):
             2047: 36500,
             2048: 37000
         })
-        self.assertEqual(int(result.total_investment),  5708297)
-        self.assertEqual(int(result.total_cashflow),  10364759)
+        self.assertEqual(int(result.total_investment), 5708297)
+        self.assertEqual(int(result.total_cashflow), 10364759)
