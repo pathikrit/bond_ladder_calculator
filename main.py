@@ -11,6 +11,8 @@ import numpy_financial as npf
 import pandas as pd
 import streamlit as st
 
+logging.basicConfig(level=logging.INFO)
+
 
 @dataclass
 class Result:
@@ -45,6 +47,14 @@ class Calculator:
         securities['cashflow'] = 0.0
         securities = securities[securities['Attributes'].str.contains('CP')]  # Call Protected bonds only
         self.securities = securities
+
+    def calculate_all(self):
+        target_monthly_cashflow_by_year = {}
+        for year in range(self.securities['maturity_date'].min().year + 1, self.securities['maturity_date'].max().year + 1)[:30]:
+            logging.debug('Calculating IRR for %d', year)
+            target_monthly_cashflow_by_year[year] = 10000
+            res = self.calculate(target_monthly_cashflow_by_year)
+            yield {'year': year, 'irr': res.irr * 100}
 
     def calculate(self, target_monthly_cashflow_by_year: Dict[int, float], cash_yield: float = 1.0 / 100) -> Result:
         """
@@ -107,8 +117,7 @@ class Calculator:
 
         return buy(max_maturity_date=end_date)
 
-    @staticmethod
-    def render(result: Result) -> None:
+    def render(self, result: Result) -> None:
         col1, col2 = st.columns(2)
         col1.metric(
             label='Investment',
@@ -129,6 +138,16 @@ class Calculator:
                 '_index': st.column_config.NumberColumn(format='%d')
             }
         )
+
+        # st.line_chart(
+        #     data=pd.DataFrame(list(self.calculate_all()))
+        #     .style.format({
+        #         'year': Styles.string(),
+        #         'irr': Styles.percent()
+        #     }),
+        #     x='year',
+        #     y='irr'
+        # )
 
         cashflow_cols = list(filter(lambda col: col.startswith('cashflow'), result.securities.columns))
         securities_style = {
@@ -186,7 +205,7 @@ def main():
         '~/Downloads/Treasury_6Nov2023.csv',
         '~/Downloads/All_7Nov2023.csv'
     ])
-    Calculator.render(calculator.calculate(
+    calculator.render(calculator.calculate(
         target_monthly_cashflow_by_year={year: 30000 + (year - 2025) * 250 for year in range(2025, 2050)}
     ))
 
