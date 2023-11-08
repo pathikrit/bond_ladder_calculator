@@ -11,6 +11,7 @@ import numpy_financial as npf
 import pandas as pd
 import streamlit as st
 
+
 @dataclass
 class Result:
     securities: pd.DataFrame
@@ -28,6 +29,7 @@ class Result:
     def irr(self) -> float:
         return npf.irr([-self.total_investment] + self.plan['actual_cashflow'].tolist())
 
+
 class Calculator:
     def __init__(self, fidelity_files: List[str]):
         securities = pd.concat([pd.read_csv(file) for file in fidelity_files])
@@ -44,7 +46,7 @@ class Calculator:
         securities = securities[securities['Attributes'].str.contains('CP')]  # Call Protected bonds only
         self.securities = securities
 
-    def calculate(self, target_monthly_cashflow_by_year: Dict[int, float], cash_yield: float=1.0 / 100) -> Result:
+    def calculate(self, target_monthly_cashflow_by_year: Dict[int, float], cash_yield: float = 1.0 / 100) -> Result:
         """
         :param target_monthly_cashflow_by_year: kv of year to monthly cashflow needed for that year
         :param cash_yield: yield if we simply hold cash (e.g. in a savings account)
@@ -78,24 +80,27 @@ class Calculator:
 
             logging.debug('Found CUSIP=%s with maturity_date=%s to cover until end_date=%s', cusip, maturity_date, max_maturity_date)
 
-            def update(date, amount: float, prefix: str) -> None:
-                logging.debug('\t%s for %s = %f', prefix, date, amount)
+            def update(dt: date, amount: float, prefix: str) -> None:
+                logging.debug('\t%s for %s = %f', prefix, dt, amount)
                 securities.loc[cusip, 'cashflow'] += amount
-                securities.loc[cusip, f'cashflow_{date.year}'] += amount
-                plan.loc[date.year, 'actual_cashflow'] += amount
-                plan.loc[date.year, 'target_cashflow'] -= amount
+                securities.loc[cusip, f'cashflow_{dt.year}'] += amount
+                plan.loc[dt.year, 'actual_cashflow'] += amount
+                plan.loc[dt.year, 'target_cashflow'] -= amount
                 plan['target_cashflow'] = plan['target_cashflow'].clip(lower=0)  # sometimes dividend payout may exceed our needs by a bit
 
-            for date in reversed(list(rrule.rrule(rrule.MONTHLY, dtstart=maturity_date.replace(day=1), until=max_maturity_date))):
-                if date.year in plan.index:
-                    update(date=date, amount=plan.loc[date.year, 'target_cashflow'] / date.month, prefix='Cash needed')
+            for dt in reversed(list(rrule.rrule(rrule.MONTHLY, dtstart=maturity_date.replace(day=1), until=max_maturity_date))):
+                if dt.year in plan.index:
+                    update(dt=dt, amount=plan.loc[dt.year, 'target_cashflow'] / dt.month, prefix='Cash needed')
 
             securities.loc[cusip, 'buy'] = securities.loc[cusip, 'cashflow'] // security['redemption']
 
             if security['coupon'] > 0:  # if this pays dividends
-                for date in rrule.rrule(rrule.YEARLY, dtstart=start_date, until=maturity_date):
-                    amount = security['redemption'] * securities.loc[cusip, 'buy'] * security['coupon'] / 100
-                    update(date=date, amount=amount, prefix='Dividend')
+                for dt in rrule.rrule(rrule.YEARLY, dtstart=start_date, until=maturity_date):
+                    update(
+                        dt=dt,
+                        amount=security['redemption'] * securities.loc[cusip, 'buy'] * security['coupon'] / 100,
+                        prefix='Dividend'
+                    )
 
             # buy next security with max maturity date 1 day before this one matures
             return buy(max_maturity_date=maturity_date - relativedelta(days=1))
