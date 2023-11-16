@@ -1180,6 +1180,20 @@ watchdog = {version = ">=2.1.5", markers = "platform_system != \"Darwin\""}
 snowflake = ["snowflake-connector-python (>=2.8.0)", "snowflake-snowpark-python (>=0.9.0)"]
 
 [[package]]
+name = "streamlit-ace"
+version = "0.1.1"
+description = "Ace editor component for Streamlit."
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "streamlit_ace-0.1.1-py3-none-any.whl", hash = "sha256:cdf908a90058fa831fb720d29e2aef35a0f5799eac33e2b2e58ba9f3631b1aa5"},
+    {file = "streamlit_ace-0.1.1.tar.gz", hash = "sha256:1852fa19707685fd4241be9256c1ab1a89da4a3b8c28ab286e3bff122d3a1686"},
+]
+
+[package.dependencies]
+streamlit = ">=0.63"
+
+[[package]]
 name = "tenacity"
 version = "8.2.3"
 description = "Retry code until it succeeds"
@@ -1392,4 +1406,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.9.7 || >3.9.7,<4.0"
-content-hash = "8375085ae6b1f5db3f9708eae4009bf8aaf38a4bc4e1f41d052c23886455dece"
+content-hash = "244f4ece66827ccd2d7417a6a94600ae76e98a5e0d6e94e0013ef2c678ff9101"

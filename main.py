@@ -10,6 +10,7 @@ import numpy as np
 import numpy_financial as npf
 import pandas as pd
 import streamlit as st
+from streamlit_ace import st_ace
 
 logging.basicConfig(level=logging.INFO)
 
@@ -206,9 +207,12 @@ def main():
         f'~/Downloads/Fidelity/CD_{today}.csv',
         f'~/Downloads/Fidelity/TREASURY_{today}.csv'
     ])
-    calculator.render(calculator.calculate(
-        target_monthly_cashflow_by_year={year: 5445 + 0 * i for i, year in enumerate(range(2025, 2049))}
-    ))
+    target_monthly_cashflow_by_year = st_ace(
+        value='{year: 27500 + 250*i for i, year in enumerate(range(2025, 2050))}',
+        language='python',
+        theme='terminal',
+    )
+    calculator.render(calculator.calculate(target_monthly_cashflow_by_year=eval(target_monthly_cashflow_by_year)))
 
 
 if __name__ == '__main__':
