@@ -17,7 +17,9 @@ cd fixed_income_annuity/
 
 ![fidelity.png](fidelity.png)
 
-3. Modify last few lines of [main.py](main.py#L170) to specify your target cashflow and path to above downloaded files (see example in [tests](tests/test_calculator.py)) 
+You can directly bookmark [these 2 links from my Chrome extension](https://github.com/pathikrit/chrome_ai/blob/c5cb23f3392d895825ef4d988d3b602c38b9d65c/index.js#L117-L118) that automates this.
+
+3. Modify last few lines of [main.py](main.py#L200) to specify your target cashflow and path to above downloaded files (see example in [tests](tests/test_calculator.py)) 
 
 4. Run: 
 ```

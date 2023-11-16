@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from typing import List, Dict
 
 import logging
@@ -201,12 +201,13 @@ class Styles:
 
 
 def main():
+    today = datetime.today().strftime('%Y-%m-%d')
     calculator = Calculator(fidelity_files=[
-        '~/Downloads/Treasury_6Nov2023.csv',
-        '~/Downloads/All_7Nov2023.csv'
+        f'~/Downloads/Fidelity/CD_{today}.csv',
+        f'~/Downloads/Fidelity/TREASURY_{today}.csv'
     ])
     calculator.render(calculator.calculate(
-        target_monthly_cashflow_by_year={year: 30000 + (year - 2025) * 250 for year in range(2025, 2050)}
+        target_monthly_cashflow_by_year={year: 5445 + 0 * i for i, year in enumerate(range(2025, 2049))}
     ))
 
 
