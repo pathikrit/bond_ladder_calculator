@@ -6,8 +6,8 @@ from main import Calculator
 class TestCalculator(TestCase):
     def test_calculate(self):
         calculator = Calculator(fidelity_files=[
-            'tests/fidelity_downloads/Treasury_6Nov2023.csv',
-            'tests/fidelity_downloads/All_7Nov2023.csv'
+            'tests/fidelity_downloads/CD_2023-11-02.csv',
+            'tests/fidelity_downloads/TREASURY_2023-11-02.csv'
         ])
         result = calculator.calculate(target_monthly_cashflow_by_year={
             2025: 33000,
@@ -35,5 +35,5 @@ class TestCalculator(TestCase):
             2047: 36500,
             2048: 37000
         })
-        self.assertEqual(int(result.total_investment), 5708297)
-        self.assertEqual(int(result.total_cashflow), 10364759)
+        self.assertEqual(int(result.total_investment), 5605153)
+        self.assertEqual(int(result.total_cashflow), 10350420)
