@@ -2,8 +2,9 @@ Fixed Income to Annuity [![Tests](https://github.com/pathikrit/fixed_income_annu
 ----
 
 * Constructs an [annuity](https://www.investopedia.com/investing/overview-of-annuities/) with custom cashflow out of [bonds]([https://fixedincome.fidelity.com/ftgw/fi/FILanding#tbindividual-bonds|treasury](https://www.investopedia.com/financial-edge/0312/the-basics-of-bonds.aspx))
+* Live Streamlit app: https://fixed-income-annuity.streamlit.app/
 
-Running this code:
+### Running locally
 
 1. Prerequisites: You would need `git`, [`poetry`](https://python-poetry.org/docs/#installation) and [`streamlit`](https://docs.streamlit.io/library/get-started/installation)
 2. Checkout this repo:

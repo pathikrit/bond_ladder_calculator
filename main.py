@@ -208,7 +208,7 @@ def main():
         'tests/fidelity_downloads/TREASURY_2023-11-02.csv'
     ])
     target_monthly_cashflow_by_year = st_ace(
-        value='{year: 27500 + 250*i for i, year in enumerate(range(2025, 2050))}',
+        value='{year: 35000 + 250*i for i, year in enumerate(range(2026, 2049))}',
         language='python',
         theme='terminal',
         auto_update=True,
