@@ -170,7 +170,7 @@ class Calculator:
             .assign(bought=result.securities['buy'] > 0)
             .assign(link=result.securities.index.to_series().map(Styles.security))
             .sort_values(by=['bought', 'maturity_date', 'yield'], ascending=False)
-            .style.format(securities_style),
+            .style.format(securities_style).highlight_between(subset=cashflow_cols, left=0.01),
             column_config={
                 'link': st.column_config.LinkColumn()
             },
