@@ -138,7 +138,8 @@ class Calculator:
             .style.format({col: Styles.money() for col in result.plan.columns}),
             column_config={
                 '_index': st.column_config.NumberColumn(format='%d')
-            }
+            },
+            height=1000
         )
 
         # st.line_chart(
@@ -173,6 +174,7 @@ class Calculator:
             column_config={
                 'link': st.column_config.LinkColumn()
             },
+            height=3600
         )
 
 
@@ -203,11 +205,15 @@ class Styles:
 
 
 def main():
+    st.set_page_config(layout="wide")
+    st.title('Bond Ladder Calculator')
+    st.header('Input')
     uploaded_files = st.file_uploader('Choose Fidelity Exports', accept_multiple_files=True)
     calculator = Calculator(fidelity_files=uploaded_files if uploaded_files else [
         'tests/fidelity_downloads/CD_2023-11-02.csv',
         'tests/fidelity_downloads/TREASURY_2023-11-02.csv'
     ])
+    st.subheader('Target Monthly Cashflow by Year')
     target_monthly_cashflow_by_year = st_ace(
         value=textwrap.dedent("""{
             2025: 33000,
@@ -239,6 +245,7 @@ def main():
         theme='terminal',
         auto_update=True,
     )
+    st.header('Output')
     calculator.render(calculator.calculate(target_monthly_cashflow_by_year=eval(target_monthly_cashflow_by_year)))
 
 
