@@ -7,7 +7,7 @@ disable=
     C0115, # missing-class-docstring
     C0116, # missing-function-docstring
     E1136, # https://github.com/pylint-dev/pylint/issues/3637
-    E1137  # https://github.com/pylint-dev/pylint/issus/7564
+    E1137, # https://github.com/pylint-dev/pylint/issus/7564
     W0123  # We do let users input code
 
 init-hook='import sys; sys.path.append(".")' # see https://stackoverflow.com/questions/77446605/
