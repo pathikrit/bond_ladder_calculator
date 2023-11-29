@@ -138,8 +138,7 @@ class Calculator:
             .style.format({col: Styles.money() for col in result.plan.columns}),
             column_config={
                 '_index': st.column_config.NumberColumn(format='%d')
-            },
-            height=1000
+            }
         )
 
         # st.line_chart(
@@ -173,8 +172,7 @@ class Calculator:
             .style.format(securities_style).highlight_between(subset=cashflow_cols, left=0.01),
             column_config={
                 'link': st.column_config.LinkColumn()
-            },
-            height=3600
+            }
         )
 
 
