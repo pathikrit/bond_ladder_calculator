@@ -13,8 +13,8 @@ import pandas as pd
 import streamlit as st
 from streamlit_ace import st_ace
 
-logging.basicConfig(level=logging.INFO)
-
+logging.basicConfig(level=logging.DEBUG)
+np.seterr(all='raise')
 
 @dataclass
 class Result:
@@ -49,6 +49,8 @@ class Calculator:
         securities['cashflow'] = 0.0
         securities = securities[securities['Attributes'].str.contains('CP')]  # Call Protected bonds only
         self.securities = securities
+        st.subheader('Securities')
+        st.dataframe(securities)
 
     def calculate_all(self):
         target_monthly_cashflow_by_year = {}
@@ -86,7 +88,8 @@ class Calculator:
                 return 0 if months_in_between <= 0 else row['yield'] / 100 - months_in_between * cash_yield / 12
 
             securities['cash_adjusted_yield'] = securities.apply(cashout_adjusted_yield, axis=1)
-            security = securities[securities['cash_adjusted_yield'] == securities['cash_adjusted_yield'].max()].iloc[0]
+            available = securities[securities['maturity_date'].dt.date <= max_maturity_date]
+            security = available[(available['cash_adjusted_yield'] == available['cash_adjusted_yield'].max())].iloc[0]
             cusip = security.name
             maturity_date = security['maturity_date'].date()
 
