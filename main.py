@@ -13,7 +13,7 @@ import pandas as pd
 import streamlit as st
 from streamlit_ace import st_ace
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 np.seterr(all='raise')
 
 @dataclass
@@ -49,8 +49,8 @@ class Calculator:
         securities['cashflow'] = 0.0
         securities = securities[securities['Attributes'].str.contains('CP')]  # Call Protected bonds only
         self.securities = securities
-        st.subheader('Securities')
-        st.dataframe(securities)
+        #st.subheader('Securities')
+        #st.dataframe(securities)
 
     def calculate_all(self):
         target_monthly_cashflow_by_year = {}
@@ -216,7 +216,9 @@ def main():
     ])
     st.subheader('Target Monthly Cashflow by Year')
     target_monthly_cashflow_by_year = st_ace(
-        value=textwrap.dedent("""{
+        value=textwrap.dedent("""
+        # {year: 30000 + 500*i for i, year in enumerate(range(2025, 2050))}
+        {
             2025: 33000,
             2026: 33500,
             2027: 34000,
