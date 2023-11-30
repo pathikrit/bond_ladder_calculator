@@ -129,19 +129,19 @@ class Calculator:
             value=Styles.money().format(result.total_investment),
             delta='IRR ' + Styles.percent().format(result.irr * 100)
         )
-        col2.metric(
+        col1.metric(
             label='Total Payout',
             value=Styles.money().format(result.total_cashflow),
             delta='MOIC ' + Styles.num(decimals=2).format(result.total_cashflow / result.total_investment) + 'x'
         )
 
-        st.dataframe(
+        col2.dataframe(
             data=result.plan
             .replace(0, np.nan)
             .style.format({col: Styles.money() for col in result.plan.columns}),
             column_config={
                 '_index': st.column_config.NumberColumn(format='%d')
-            }
+            },
         )
 
         # st.line_chart(
@@ -175,7 +175,8 @@ class Calculator:
             .style.format(securities_style).highlight_between(subset=cashflow_cols, left=0.01),
             column_config={
                 'link': st.column_config.LinkColumn()
-            }
+            },
+            height=1000
         )
 
 

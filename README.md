@@ -4,10 +4,11 @@
 ### Running locally
 
 1. Prerequisites: You would need `git`, [`poetry`](https://python-poetry.org/docs/#installation) and [`streamlit`](https://docs.streamlit.io/library/get-started/installation)
-2. Checkout this repo:
+2. Checkout + Installtion:
     ```shell
     git clone git@github.com:pathikrit/bond_ladder_calculator.git
     cd bond_ladder_calculator/
+    poetry install --with dev
     ```
 3. Download spreadsheet(s) of [available bonds from Fidelity](https://fixedincome.fidelity.com/ftgw/fi/FILanding#tbindividual-bonds|treasury) that you want:
 ![fidelity.png](fidelity.png)
